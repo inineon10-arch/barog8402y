@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f5f0eb">
+<meta name="referrer" content="no-referrer">
+<title>오답 단어</title>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f5f0eb;--card:#ffffff;--accent:#2d5be3;--accent2:#e3502d;
+    --wrong-col:#d94040;--text:#1a1a2e;--text2:#6b6b80;--muted:#b0aab8;
+    --border:#e2dcd8;--pill-wrong:#fff0f0;--green:#1a9e6f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--bg);font-family:'Gowun Dodum',sans-serif;color:var(--text);min-height:100vh;-webkit-text-size-adjust:100%;}
+  #app{max-width:680px;margin:0 auto;padding:18px 16px 40px;padding-top:max(18px,env(safe-area-inset-top));}
+  .header{margin-bottom:18px;}
+  .header .name{font-family:'Space Grotesk',sans-serif;font-size:0.7rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--wrong-col);}
+  .header .title{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;color:var(--text);margin-top:3px;letter-spacing:-0.5px;}
+  .header .sub{font-size:0.78rem;color:var(--text2);margin-top:4px;}
+  .stat-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .stat-chip{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:6px 12px;font-size:0.7rem;color:var(--text2);display:inline-flex;align-items:center;gap:5px;}
+  .stat-chip strong{font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--wrong-col);font-size:0.85rem;}
+  .status{text-align:center;padding:60px 20px;color:var(--text2);font-size:0.9rem;line-height:1.6;}
+  .status .emoji{font-size:2.4rem;margin-bottom:10px;display:block;}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  @media(min-width:520px){.grid{grid-template-columns:repeat(3,1fr);gap:12px;}}
+  .folder{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 12px;text-decoration:none;color:inherit;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s,border-color 0.15s;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.03);}
+  .folder:active{transform:scale(0.97);}
+  .folder:hover{border-color:var(--wrong-col);box-shadow:0 4px 14px rgba(217,64,64,0.10);}
+  .folder-top{height:3px;background:linear-gradient(90deg,var(--wrong-col) 0%,#ff9980 100%);border-radius:3px;margin:-14px -14px 4px;}
+  .folder-no{font-family:'Space Grotesk',sans-serif;font-size:0.6rem;font-weight:600;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase;}
+  .folder-date{font-family:'Space Grotesk',sans-serif;font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-0.3px;line-height:1.1;}
+  .folder-day{font-size:0.72rem;color:var(--text2);margin-top:-2px;}
+  .folder-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:6px;}
+  .folder-count{font-size:0.7rem;color:var(--wrong-col);background:var(--pill-wrong);border:1px solid #ffcccc;border-radius:12px;padding:2px 9px;font-weight:600;}
+  .folder-count.zero{color:var(--green);background:#e8f7f0;border-color:#b8e4d0;}
+  .folder-arrow{font-size:1rem;color:var(--muted);}
+  .folder:hover .folder-arrow{color:var(--wrong-col);}
+  .back-link{display:inline-flex;align-items:center;gap:4px;font-size:0.78rem;color:var(--text2);text-decoration:none;margin-bottom:12px;}
+  .back-link:active{color:var(--accent);}
+</style>
+</head>
+<body>
+<div id="app">
+  <a href="index.html" class="back-link">← 홈으로</a>
+  <div class="header">
+    <div class="name" id="hdr-name">바로그영어</div>
+    <div class="title">오답 단어장</div>
+    <div class="sub">날짜를 선택하면 그날의 오답 단어를 플래시카드로 복습해요</div>
+  </div>
+  <div class="stat-bar" id="stat-bar" style="display:none;">
+    <div class="stat-chip"><span>총</span><strong id="stat-days">0</strong><span>일</span></div>
+    <div class="stat-chip"><span>총</span><strong id="stat-words">0</strong><span>개 단어</span></div>
+  </div>
+  <div id="status" class="status">
+    <span class="emoji">⏳</span>
+    데이터를 불러오는 중...
+  </div>
+  <div id="grid" class="grid" style="display:none;"></div>
+</div>
+
+<script>
+/* ============================================================
+   ★ 학생별 설정 (이 두 줄만 변경)
+   ============================================================ */
+const STUDENT_NAME = '박영은';
+const SHEET_GID    = '341202867';
+const SHEET_CSV_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQyO-Sx_N0LFENgIcQp-3ATAHrYOUvLCuEr2Nls8qYKYMnOTRyo5_zJY1hbyA1ONfzcf2UK7kwe3fTP/pub?output=csv';
+/* ============================================================ */
+
+const DOW = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+
+function showStatus(emoji,msg){
+  const s=document.getElementById('status');
+  s.innerHTML=`<span class="emoji">${emoji}</span>${msg}`;
+  s.style.display='block';
+}
+
+function parseCSV(text){
+  const rows=[];
+  let row=[],cur='',inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(inQ){
+      if(ch==='"'){
+        if(text[i+1]==='"'){cur+='"';i++;}
+        else inQ=false;
+      } else cur+=ch;
+    } else {
+      if(ch==='"') inQ=true;
+      else if(ch===','){row.push(cur);cur='';}
+      else if(ch==='\n'){row.push(cur);rows.push(row);row=[];cur='';}
+      else if(ch==='\r'){/* skip */}
+      else cur+=ch;
+    }
+  }
+  if(cur||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+
+function normDate(s){
+  if(!s) return '';
+  const m=String(s).trim().match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if(!m) return '';
+  return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+}
+
+function fmtDate(dateStr){
+  const p=dateStr.split('-');
+  return `${parseInt(p[1])}월 ${parseInt(p[2])}일`;
+}
+
+function getDow(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  return DOW[d.getDay()];
+}
+
+async function loadFolders(){
+  document.getElementById('hdr-name').textContent=`바로그영어 · ${STUDENT_NAME}`;
+  try {
+    const url=`${SHEET_CSV_BASE}&gid=${SHEET_GID}&t=${Date.now()}`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text=await res.text();
+    const rows=parseCSV(text);
+
+    // 날짜별로 카운트 집계
+    const dateMap=new Map(); // date -> count
+    let startRow=0;
+    if(rows.length && String(rows[0][0]||'').trim()==='날짜') startRow=1;
+
+    for(let i=startRow;i<rows.length;i++){
+      const r=rows[i];
+      if(!r||r.length<3) continue;
+      const dateStr=normDate(r[0]);
+      const word=String(r[2]||'').trim();
+      if(!dateStr || !word) continue;
+      dateMap.set(dateStr,(dateMap.get(dateStr)||0)+1);
+    }
+
+    if(dateMap.size===0){
+      showStatus('📭','아직 오답 데이터가 없어요.<br><span style="font-size:0.8rem;color:var(--muted)">시험 채점이 끝나면 자동으로 추가돼요</span>');
+      return;
+    }
+
+    // 최신순 정렬
+    const sorted=[...dateMap.entries()].sort((a,b)=>b[0].localeCompare(a[0]));
+
+    // 상단 통계
+    document.getElementById('stat-days').textContent=sorted.length;
+    document.getElementById('stat-words').textContent=sorted.reduce((s,[,c])=>s+c,0);
+    document.getElementById('stat-bar').style.display='flex';
+
+    // 카드 렌더링
+    const grid=document.getElementById('grid');
+    grid.innerHTML='';
+    sorted.forEach((entry,i)=>{
+      const [date,count]=entry;
+      const a=document.createElement('a');
+      a.className='folder';
+      a.href=`wrong-flashcard.html?date=${date}`;
+      a.innerHTML=`
+        <div class="folder-top"></div>
+        <div class="folder-no">No. ${String(i+1).padStart(2,'0')}</div>
+        <div>
+          <div class="folder-date">${fmtDate(date)}</div>
+          <div class="folder-day">${getDow(date)}</div>
+        </div>
+        <div class="folder-foot">
+          <span class="folder-count">오답 ${count}개</span>
+          <span class="folder-arrow">→</span>
+        </div>`;
+      grid.appendChild(a);
+    });
+
+    document.getElementById('status').style.display='none';
+    grid.style.display='grid';
+  } catch(err){
+    showStatus('⚠️',`데이터를 불러오지 못했어요.<br><span style="font-size:0.78rem;color:var(--muted)">${err.message}</span>`);
+  }
+}
+
+loadFolders();
+</script>
+</body>
+</html>
