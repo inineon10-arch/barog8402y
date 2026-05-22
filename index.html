@@ -823,19 +823,45 @@ function renderQuizBanners() {
     banner.className = 'quiz-banner' + (q.overdue ? ' overdue' : '');
     banner.dataset.idx = idx;
 
-    const label = q.overdue
-      ? `밀린 단어 <span class="quiz-banner-overdue-tag">${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})</span>`
-      : `오늘의 단어 · ${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})`;
-    const sub = q.count === null ? `객관식 · 전체 문제` : `객관식 · ${q.count}문제`;
-    const btn = q.overdue ? '지금 풀기 →' : '시작하기 →';
+    /* ── 배너 왼쪽 영역 ── */
+    const left = document.createElement('div');
+    left.className = 'quiz-banner-left';
 
-    banner.innerHTML = `
-      <div class="quiz-banner-left">
-        <div class="quiz-banner-label">${label}</div>
-        <div class="quiz-banner-day">${q.day}</div>
-        <div class="quiz-banner-sub">${sub}</div>
-      </div>
-      <button class="quiz-banner-btn" onclick="startQuizByIdx(${idx})">${btn}</button>`;
+    /* label — overdue 태그 안의 날짜/요일은 숫자·글자만 반환하므로 안전 */
+    const labelEl = document.createElement('div');
+    labelEl.className = 'quiz-banner-label';
+    if (q.overdue) {
+      labelEl.textContent = '밀린 단어 ';
+      const tag = document.createElement('span');
+      tag.className = 'quiz-banner-overdue-tag';
+      tag.textContent = `${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})`;
+      labelEl.appendChild(tag);
+    } else {
+      labelEl.textContent = `오늘의 단어 · ${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})`;
+    }
+
+    /* q.day — 시트 데이터이므로 반드시 textContent 로 삽입 */
+    const dayEl = document.createElement('div');
+    dayEl.className = 'quiz-banner-day';
+    dayEl.textContent = q.day;
+
+    const subEl = document.createElement('div');
+    subEl.className = 'quiz-banner-sub';
+    subEl.textContent = q.count === null ? '객관식 · 전체 문제' : `객관식 · ${q.count}문제`;
+
+    left.appendChild(labelEl);
+    left.appendChild(dayEl);
+    left.appendChild(subEl);
+
+    /* 시작 버튼 — onclick 인라인 제거, addEventListener 사용 */
+    const btnEl = document.createElement('button');
+    btnEl.className = 'quiz-banner-btn';
+    btnEl.type = 'button';
+    btnEl.textContent = q.overdue ? '지금 풀기 →' : '시작하기 →';
+    btnEl.addEventListener('click', () => startQuizByIdx(idx));
+
+    banner.appendChild(left);
+    banner.appendChild(btnEl);
     container.appendChild(banner);
   });
 }
@@ -944,26 +970,30 @@ async function qzRenderStage(html,dir=0){await qzSwapCard(html,dir);}
 async function qzRenderQ(dir=1){
   qzAnswered=qzQueue[qzPos]._result!==null;
   const q=qzQueue[qzPos];
+
+  /* ── 보기 버튼 HTML — onclick 인라인 제거, data 속성으로 값 전달 ── */
   const optsHTML=q._opts.map((opt,i)=>{
     const key=String.fromCharCode(65+i);
     const cls=q._result
       ?(opt===q.meaning?(q._result==='correct'?'qz-opt correct disabled':'qz-opt show-answer disabled')
         :opt===q._picked?'qz-opt wrong disabled':'qz-opt disabled')
       :'qz-opt';
-    const safeOpt = opt.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const onclick = q._result ? '' : `onclick="qzAnswer(this,'${safeOpt}')"`;
-    return `<button class="${cls}" type="button" ${onclick}><span class="qz-opt-key">${key}</span><span>${esc(opt)}</span></button>`;
+    /* data-opt 에 안전하게 저장 — esc()로 HTML 속성 이스케이프 */
+    const dataAttr = q._result ? '' : `data-opt="${esc(opt)}"`;
+    return `<button class="${cls}" type="button" ${dataAttr}><span class="qz-opt-key">${key}</span><span>${esc(opt)}</span></button>`;
   }).join('');
+
   const fb=q._result
     ?(q._result==='correct'
       ?`<div class="qz-fb correct show"><div class="qz-fb-title">✓ 정답!</div><div class="qz-fb-ans">${esc(q.word)} — ${esc(q.meaning)}</div></div>`
       :`<div class="qz-fb wrong show"><div class="qz-fb-title">✗ 오답</div><div class="qz-fb-ans">정답: ${esc(q.meaning)}</div></div>`)
     :'';
   const hint=q._result?`<div class="qz-swipe-hint show">${qzPos<qzQueue.length-1?'← 스와이프해서 다음 문제':'← 스와이프해서 결과 보기'}</div>`:'';
-  const safeWord = q.word.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+  /* TTS 버튼 — onclick 인라인 제거, data-word 속성 사용 */
   await qzRenderStage(`
     <div class="qz-card-line${qzStage==='retry'?' retry':''}"></div>
-    <button class="qz-tts qz-tts-corner" type="button" onclick="event.stopPropagation();ttsPlay('${safeWord}',this)">🔊</button>
+    <button class="qz-tts qz-tts-corner" type="button" data-word="${esc(q.word)}">🔊</button>
     <div class="qz-content">
       <div class="qz-badges"><span class="qz-badge qz-badge-num">${esc(q.day)}</span></div>
       <div class="qz-prompt">
@@ -973,6 +1003,23 @@ async function qzRenderQ(dir=1){
       <div class="qz-options">${optsHTML}</div>
       ${fb}
     </div>${hint}`,dir);
+
+  /* ── 카드가 DOM에 삽입된 후 이벤트 리스너 등록 ── */
+  if(qzCardEl) {
+    /* 보기 버튼 클릭 */
+    qzCardEl.querySelectorAll('.qz-opt[data-opt]').forEach(btn => {
+      btn.addEventListener('click', () => qzAnswer(btn, btn.dataset.opt));
+    });
+    /* TTS 버튼 클릭 */
+    const ttsCorner = qzCardEl.querySelector('.qz-tts-corner');
+    if(ttsCorner) {
+      ttsCorner.addEventListener('click', e => {
+        e.stopPropagation();
+        ttsPlay(ttsCorner.dataset.word, ttsCorner);
+      });
+    }
+  }
+
   qzUpdateDots();
   /* 새 문제마다 자동 발음 (정답 미입력 상태일 때만) */
   if(!q._result){

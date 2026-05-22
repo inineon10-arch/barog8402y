@@ -163,21 +163,24 @@ function buildDots(){const wrap=document.getElementById('prog-dots');wrap.innerH
 function updateDots(){const isEnd=idx>=cards.length;cards.forEach((_,i)=>{const d=document.getElementById(`dot-${i}`);if(!d)return;d.className='pdot'+(isEnd?' done all':i<idx?' done':i===idx?' current':'');});document.getElementById('cur').textContent=isEnd?'✓':(idx+1);document.getElementById('tot').textContent=cards.length;}
 function buildCardHTML(card){
   const isBlank=card.student==='(무응답)';
+  /* 시트 데이터 전부 esc() 적용 — example만 sanitize 거쳐 <em> 허용 */
+  const eWord=esc(card.word), eCorrect=esc(card.correct), ePos=esc(card.pos),
+        eNum=esc(card.num), eTip=esc(card.tip), eStudent=esc(card.student);
   const badgeType=isBlank?`<span class="badge b-blank">미응답</span>`:`<span class="badge b-wrong">오답</span>`;
-  const studentHTML=`<div class="student-row"><span class="student-label">내 답</span>${isBlank?`<span class="blank-label">— 미응답</span>`:`<span class="student-ans">${card.student}</span>`}</div>`;
-  const badges=`<div class="badges"><span class="badge b-num">No.${card.num}</span>${badgeType}<span class="badge b-pos">${card.pos}</span></div>`;
-  const ttsWord=card.word.replace(/'/g,"&#39;");
-  const ttsBtn=`<button class="tts-btn" onclick="event.stopPropagation();speakWord(this,'${ttsWord}');" type="button">🔊</button>`;
-  const MFACE=`<div class="face-meaning">${badges}<div class="meaning-center"><div class="meaning-label">뜻</div><div class="meaning-text">${card.correct}</div></div><div class="tap-hint">탭해서 영단어 보기</div></div>`;
-  const MBACK=`<div class="face-meaning">${badges}<div class="scroll-area"><div class="word-center" style="min-height:90px"><div class="word-label">영단어</div><div class="word-text">${card.word}</div><div class="word-pos">${card.pos}</div></div>${studentHTML}<div class="tip-box"><div class="tip-title">💡 암기 팁</div>${card.tip}</div><div class="example-box">${card.example}</div></div><div class="tap-hint">탭해서 뜻 보기</div></div>`;
-  const WFACE=`<div class="face-word">${badges}<div class="word-center"><div class="word-label">영단어</div><div class="word-text">${card.word}</div><div class="word-pos">${card.pos}</div></div><div class="tap-hint">탭해서 뜻 보기</div></div>`;
-  const WBACK=`<div class="face-word">${badges}<div class="scroll-area"><div class="word-center" style="min-height:80px"><div class="word-label">영단어</div><div class="word-text" style="font-size:1.6rem">${card.word}</div></div><div class="meaning-label" style="text-align:center;margin-bottom:6px">뜻</div><div class="meaning-text" style="text-align:center;font-size:1.35rem;margin-bottom:10px">${card.correct}</div>${studentHTML}<div class="tip-box"><div class="tip-title">💡 암기 팁</div>${card.tip}</div><div class="example-box">${card.example}</div></div><div class="tap-hint">탭해서 영단어 보기</div></div>`;
+  const studentHTML=`<div class="student-row"><span class="student-label">내 답</span>${isBlank?`<span class="blank-label">— 미응답</span>`:`<span class="student-ans">${eStudent}</span>`}</div>`;
+  const badges=`<div class="badges"><span class="badge b-num">No.${eNum}</span>${badgeType}<span class="badge b-pos">${ePos}</span></div>`;
+  /* TTS 버튼 — 인라인 onclick 제거, data-word 속성 사용 (renderCard에서 리스너 등록) */
+  const ttsBtn=`<button class="tts-btn" type="button" data-word="${eWord}">🔊</button>`;
+  const MFACE=`<div class="face-meaning">${badges}<div class="meaning-center"><div class="meaning-label">뜻</div><div class="meaning-text">${eCorrect}</div></div><div class="tap-hint">탭해서 영단어 보기</div></div>`;
+  const MBACK=`<div class="face-meaning">${badges}<div class="scroll-area"><div class="word-center" style="min-height:90px"><div class="word-label">영단어</div><div class="word-text">${eWord}</div><div class="word-pos">${ePos}</div></div>${studentHTML}<div class="tip-box"><div class="tip-title">💡 암기 팁</div>${eTip}</div><div class="example-box">${card.example}</div></div><div class="tap-hint">탭해서 뜻 보기</div></div>`;
+  const WFACE=`<div class="face-word">${badges}<div class="word-center"><div class="word-label">영단어</div><div class="word-text">${eWord}</div><div class="word-pos">${ePos}</div></div><div class="tap-hint">탭해서 뜻 보기</div></div>`;
+  const WBACK=`<div class="face-word">${badges}<div class="scroll-area"><div class="word-center" style="min-height:80px"><div class="word-label">영단어</div><div class="word-text" style="font-size:1.6rem">${eWord}</div></div><div class="meaning-label" style="text-align:center;margin-bottom:6px">뜻</div><div class="meaning-text" style="text-align:center;font-size:1.35rem;margin-bottom:10px">${eCorrect}</div>${studentHTML}<div class="tip-box"><div class="tip-title">💡 암기 팁</div>${eTip}</div><div class="example-box">${card.example}</div></div><div class="tap-hint">탭해서 영단어 보기</div></div>`;
   return{frontHTML:startFace==='meaning'?MFACE:WFACE,backHTML:startFace==='meaning'?MBACK:WBACK,ttsBtn};
 }
 function buildEndHTML(){return`<div class="end-face"><div class="end-line"></div><div class="end-content"><div class="end-emoji">🎉</div><div><div class="end-label">All Done</div><div class="end-title">학습을 모두 마쳤어요!</div></div><div class="end-subtitle">오답 단어 ${cards.length}개를 모두 복습했어요.<br>한 번 더 반복하면 더욱 확실해져요 ✨</div><button class="restart-btn" id="restart-btn" type="button"><span>↻</span><span>다시 시작하기</span></button><div class="end-hint">→ 스와이프하면 마지막 카드로 돌아가요</div></div></div>`;}
 let cardEl=null;
 function autoPlayTTS(card){if(!card||idx>=cards.length)return;const word=cards[idx].word;const url=`https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(word)}`;if(currentAudio){currentAudio.pause();currentAudio=null;document.querySelectorAll('.tts-btn.playing').forEach(b=>{b.classList.remove('playing');b.dataset.playing='';});}const audio=new Audio(url);currentAudio=audio;const btn=card.querySelector('.tts-btn');if(btn){btn.classList.add('playing');btn.dataset.playing='true';}audio.onended=()=>{if(btn){btn.classList.remove('playing');btn.dataset.playing='';}currentAudio=null;};audio.onerror=()=>{if(btn){btn.classList.remove('playing');btn.dataset.playing='';}currentAudio=null;};audio.play().catch(()=>{if(btn){btn.classList.remove('playing');btn.dataset.playing='';}currentAudio=null;});}
-function renderCard(direction){const vp=document.getElementById('viewport');const old=vp.querySelector('.flash-card,.end-card');const isEnd=idx>=cards.length;const el=document.createElement('div');if(isEnd){el.className='end-card no-transition';el.innerHTML=buildEndHTML();}else{const{frontHTML,backHTML,ttsBtn}=buildCardHTML(cards[idx]);el.className='flash-card no-transition';el.innerHTML=`<div class="card-face"><div class="card-line"></div>${ttsBtn}<div class="card-content">${showingBack?backHTML:frontHTML}</div></div>`;}if(direction!==0){el.style.transform=`translateX(${direction>0?'100%':'-100%'})`;isAnimating=true;}vp.appendChild(el);cardEl=el;if(isEnd){const btn=el.querySelector('#restart-btn');if(btn)btn.addEventListener('click',restart);}requestAnimationFrame(()=>requestAnimationFrame(()=>{el.classList.remove('no-transition');el.style.transform='translateX(0)';if(!isEnd&&direction!==0&&startFace==='word')setTimeout(()=>autoPlayTTS(el),120);}));if(old){old.classList.remove('no-transition');old.style.transform=`translateX(${direction>0?'-100%':'100%'})`;old.style.opacity='0.3';setTimeout(()=>{if(old.parentNode)old.remove();isAnimating=false;},350);}else{isAnimating=false;if(!isEnd&&startFace==='word')setTimeout(()=>autoPlayTTS(el),120);}updateDots();}
+function renderCard(direction){const vp=document.getElementById('viewport');const old=vp.querySelector('.flash-card,.end-card');const isEnd=idx>=cards.length;const el=document.createElement('div');if(isEnd){el.className='end-card no-transition';el.innerHTML=buildEndHTML();}else{const{frontHTML,backHTML,ttsBtn}=buildCardHTML(cards[idx]);el.className='flash-card no-transition';el.innerHTML=`<div class="card-face"><div class="card-line"></div>${ttsBtn}<div class="card-content">${showingBack?backHTML:frontHTML}</div></div>`;}if(direction!==0){el.style.transform=`translateX(${direction>0?'100%':'-100%'})`;isAnimating=true;}vp.appendChild(el);cardEl=el;if(isEnd){const btn=el.querySelector('#restart-btn');if(btn)btn.addEventListener('click',restart);}else{const tb=el.querySelector('.tts-btn');if(tb)tb.addEventListener('click',e=>{e.stopPropagation();speakWord(tb,tb.dataset.word);});}requestAnimationFrame(()=>requestAnimationFrame(()=>{el.classList.remove('no-transition');el.style.transform='translateX(0)';if(!isEnd&&direction!==0&&startFace==='word')setTimeout(()=>autoPlayTTS(el),120);}));if(old){old.classList.remove('no-transition');old.style.transform=`translateX(${direction>0?'-100%':'100%'})`;old.style.opacity='0.3';setTimeout(()=>{if(old.parentNode)old.remove();isAnimating=false;},350);}else{isAnimating=false;if(!isEnd&&startFace==='word')setTimeout(()=>autoPlayTTS(el),120);}updateDots();}
 function restart(){if(isAnimating)return;idx=0;showingBack=false;haptic(15);renderCard(-1);}
 function flipCard(el){if(!el||isAnimating||idx>=cards.length||!el.querySelector('.card-face'))return;showingBack=!showingBack;const{frontHTML,backHTML}=buildCardHTML(cards[idx]);const content=el.querySelector('.card-content');const face=el.querySelector('.card-face');face.style.transition='transform 0.15s ease';face.style.transform='scale(0.97)';setTimeout(()=>{content.innerHTML=showingBack?backHTML:frontHTML;face.style.transform='scale(1)';},80);setTimeout(()=>{face.style.transition='';},230);}
 function haptic(ms=8){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(_){}}
@@ -252,6 +255,30 @@ function updateHeader(name,start,end){
 }
 
 /* ============================================================
+   HTML 이스케이프 (XSS 방어)
+   ============================================================ */
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+/* ============================================================
+   예문 살균 — <em> 태그만 허용, 나머지 전부 이스케이프
+   ============================================================ */
+function sanitizeExample(raw){
+  if(!raw) return '';
+  // 1단계: 전체를 통째로 이스케이프 (모든 태그 무력화)
+  let s = esc(raw);
+  // 2단계: 우리가 의도한 <em>...</em> 만 다시 살림
+  s = s.replace(/&lt;em&gt;/g,'<em>').replace(/&lt;\/em&gt;/g,'</em>');
+  return s;
+}
+
+/* ============================================================
    단어 강조 (예문에 em 태그 자동 추가)
    ============================================================ */
 function highlightWord(example, word) {
@@ -297,7 +324,7 @@ async function loadData(){
       const correct=String(r[4]||'').trim();
       const pos=String(r[5]||'').trim();
       const tip=String(r[6]||'').trim();
-      const example=highlightWord(String(r[7]||'').trim(), word);
+      const example=highlightWord(sanitizeExample(String(r[7]||'').trim()), word);
 
       if(!word) continue;
       const isBlank = student==='빈칸' || student==='' || student==='(무응답)';
