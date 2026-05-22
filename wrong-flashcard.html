@@ -252,6 +252,17 @@ function updateHeader(name,start,end){
 }
 
 /* ============================================================
+   단어 강조 (예문에 em 태그 자동 추가)
+   ============================================================ */
+function highlightWord(example, word) {
+  if (!example || !word) return example;
+  if (example.includes('<em>')) return example;
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+  return example.replace(regex, '<em>$1</em>');
+}
+
+/* ============================================================
    데이터 로드
    ============================================================ */
 async function loadData(){
@@ -286,7 +297,7 @@ async function loadData(){
       const correct=String(r[4]||'').trim();
       const pos=String(r[5]||'').trim();
       const tip=String(r[6]||'').trim();
-      const example=String(r[7]||'').trim();
+      const example=highlightWord(String(r[7]||'').trim(), word);
 
       if(!word) continue;
       const isBlank = student==='빈칸' || student==='' || student==='(무응답)';
