@@ -421,6 +421,7 @@ function switchTab(t) {
    ============================================================ */
 let vocabLoaded = false;
 let allWords = [];
+let activeWords = []; // 현재 퀴즈에서 사용할 단어 풀 (기존 or 모의고사)
 let allOpen  = false;
 
 function csvSplit(line) {
@@ -477,6 +478,7 @@ async function loadVocab() {
     }
 
     if(!allWords.length) throw new Error('단어가 없습니다.');
+    activeWords = allWords; // 기본 풀은 기존 단어장
     renderVocab(allWords);
     loadQuizConfig();
   } catch(e) {
@@ -661,25 +663,74 @@ function ttsAutoPlay(word, btn) {
    ★ 오늘의 퀴즈 — 스케줄 시트에서 날짜+학생명 → Day 자동 로딩
    ============================================================ */
 
-/* ★ 학생별로 이 두 줄만 수정
+/* ★ 학생별로 이 줄들만 수정
    STUDENT_NAME : 학생 이름 (스케줄 탭의 B열과 정확히 일치해야 함)
-   SCHEDULE_CSV : 스케줄 탭 CSV URL (모든 학생 공통 gid) */
+   SCHEDULE_CSV : 스케줄 탭 CSV URL (모든 학생 공통 gid)
+   MOCK_CSV     : 모의고사/특강 단어 시트 CSV URL (없으면 빈 문자열 '') */
 const STUDENT_NAME = '박영은';
 const SCHEDULE_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?output=csv&gid=414941877';
+const MOCK_CSV     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?gid=1027447664&single=true&output=csv'
 
 /* ★ Apps Script 웹앱 URL — scan-ocr 시트 Apps Script 배포 URL */
 const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbx5Y3daCCYcLP5WXsusQtrQmIpHrb1t7DyNqbIGRNYGDvYv74ZZ4c9tY_iATFX2krDHHA/exec';
+const API_TOKEN = 'barog-2026-q7x9k2mZ';
 
 /* 스케줄 탭 형식 (헤더 행 1개 + 데이터):
-   날짜,       학생,   Day,    문제수(선택)
-   2026-05-18, 조문정, Day 10,
-   2026-05-18, 박영은, Day 07, 20
-   2026-05-19, 조문정, Day 11,
+   날짜,       학생,   Day,       문제수(선택)
+   2026-05-18, 조문정, Day 10,          ← 기존 단어장(VOCAB_CSV)에서 Day 10 출제
+   2026-05-18, 박영은, Day 07,    20    ← 기존 단어장 Day 07, 20문제만
+   2026-05-19, 조문정, 모의 1회,        ← 모의고사 시트(MOCK_CSV)에서 "모의 1회" 출제
+   2026-05-19, 조문정, 수능특강,        ← 모의고사 시트에서 "수능특강" 출제
+   ─ Day명이 "Day 숫자" 패턴 → 기존 단어장(VOCAB_CSV) 사용
+   ─ 그 외 이름 → 모의고사 시트(MOCK_CSV) 사용
    ─ 문제수 비워두면 → 해당 Day 전체 단어 수로 자동
    ─ 문제수 입력하면 → 그 수만큼만 출제
-   ─ 오늘 날짜+이름 행이 없으면 배너 숨김 (수업 없는 날) */
+   ─ 오늘 날짜+이름 행이 없으면 배너 숨김 (수업 없는 날)
+
+   모의고사 시트 형식 (헤더 행 1개 + 데이터):
+   Day명,    단어,         뜻
+   모의 1회, abandon,      포기하다
+   모의 1회, absolute,     절대적인
+   수능특강, circumstance, 상황        */
 
 let QUIZ_CONFIG = { day: null, count: null }; // count null = 전체
+
+/* ============================================================
+   모의고사/특강 단어 — MOCK_CSV에서 로딩
+   형식: Day명, 단어, 뜻  (헤더 행 있어도 없어도 자동 감지)
+   ============================================================ */
+let mockWords = [];      // [{ day, word, meaning, pos }]
+let mockLoaded = false;
+
+/* "Day 숫자" 패턴이 아닌 모든 이름 → 모의고사 시트 참조 */
+function isMockDay(dayVal) {
+  return dayVal && !/^Day\s*\d+$/i.test(dayVal.trim());
+}
+
+async function loadMockWords() {
+  if(mockLoaded) return;
+  mockLoaded = true;
+  if(!MOCK_CSV) return; // URL 미설정 시 건너뜀
+  try {
+    const res = await fetch(MOCK_CSV + '&t=' + Date.now());
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const lines = text.trim().split('\n').map(l => l.replace(/\r$/, ''));
+    const firstCols = csvSplit(lines[0]);
+    const firstCell = (firstCols[0] || '').trim();
+    const looksLikeHeader = /^(day명|day|날짜|단어|word|표제|구분)/i.test(firstCell);
+    const startRow = looksLikeHeader ? 1 : 0;
+    mockWords = lines.slice(startRow).map(l => {
+      const v = csvSplit(l);
+      const day     = (v[0] || '').trim();
+      const word    = (v[1] || '').trim();
+      const meaning = v.slice(2).join(',').trim();
+      return { day, word, meaning, pos: '' };
+    }).filter(w => w.day && w.word && w.meaning);
+  } catch(e) {
+    console.warn('모의고사 단어 로딩 실패:', e.message);
+  }
+}
 
 /* 오늘 날짜를 YYYY-MM-DD 형식으로 반환 */
 function todayStr() {
@@ -747,7 +798,7 @@ function markLocalSubmitted(dateStr, day) {
 /* 서버 제출 기록 조회 (Apps Script doGet) */
 async function fetchServerSubmitted() {
   try {
-    const url = `${SUBMIT_URL}?action=check&student=${encodeURIComponent(STUDENT_NAME)}`;
+    const url = `${SUBMIT_URL}?action=check&student=${encodeURIComponent(STUDENT_NAME)}&token=${encodeURIComponent(API_TOKEN)}`;
     const res = await fetch(url);
     if(!res.ok) return [];
     const json = await res.json();
@@ -792,6 +843,10 @@ async function loadQuizConfig() {
   } catch(e) { /* 네트워크 실패 시 빈 목록으로 진행 */ }
 
   if(scheduleRows.length === 0) return; // 보여줄 게 없으면 종료
+
+  // 2-a. 모의고사 Day가 하나라도 있으면 모의고사 단어 사전 로딩
+  const hasMock = scheduleRows.some(r => isMockDay(r.day));
+  if(hasMock) await loadMockWords();
 
   // 2. 제출 기록 조회 (로컬 + 서버)
   const localMap     = getLocalSubmitted();
@@ -839,7 +894,8 @@ function renderQuizBanners() {
       tag.textContent = `${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})`;
       labelEl.appendChild(tag);
     } else {
-      labelEl.textContent = `오늘의 단어 · ${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})`;
+      const prefix = isMockDay(q.day) ? '모의고사 단어' : '오늘의 단어';
+      labelEl.textContent = `${prefix} · ${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})`;
     }
 
     /* q.day — 시트 데이터이므로 반드시 textContent 로 삽입 */
@@ -872,6 +928,8 @@ function startQuizByIdx(idx) {
   currentQuiz = quizList[idx];
   if(!currentQuiz) return;
   QUIZ_CONFIG = { day: currentQuiz.day, count: currentQuiz.count };
+  /* 모의고사 Day이면 mockWords를 활성 단어 풀로 설정, 아니면 기존 allWords */
+  activeWords = isMockDay(currentQuiz.day) ? mockWords : allWords;
   startQuiz();
 }
 
@@ -892,11 +950,16 @@ function qzBuildOpts(target, pool) {
 let qzStartTime = null; // 퀴즈 시작 시각
 
 function startQuiz() {
-  const dayWords = allWords.filter(w => w.day === QUIZ_CONFIG.day);
-  if(!dayWords.length){ alert(`${QUIZ_CONFIG.day} 단어를 먼저 불러오세요.`); return; }
+  const pool = activeWords.length ? activeWords : allWords;
+  const dayWords = pool.filter(w => w.day === QUIZ_CONFIG.day);
+  if(!dayWords.length){
+    const src = isMockDay(QUIZ_CONFIG.day) ? '모의고사 시트(MOCK_CSV)' : '단어장';
+    alert(`"${QUIZ_CONFIG.day}" 단어가 없어요.\n${src}에 해당 Day명이 있는지 확인해 주세요.`);
+    return;
+  }
   const count = QUIZ_CONFIG.count === null ? dayWords.length : QUIZ_CONFIG.count;
   const selected = qzShuffle([...dayWords]).slice(0, count);
-  qzQueue = selected.map(w=>({...w, _opts:qzBuildOpts(w, allWords), _result:null, _picked:null}));
+  qzQueue = selected.map(w=>({...w, _opts:qzBuildOpts(w, pool), _result:null, _picked:null}));
   qzPos=0; qzAnswered=false; qzWrong=[];
   qzStage='mc';
   qzOriginalTotal = selected.length;
@@ -1155,7 +1218,7 @@ async function submitResult(correct, total) {
   };
 
   try {
-    const res = await fetch(SUBMIT_URL, {
+   const res = await fetch(SUBMIT_URL + '?token=' + encodeURIComponent(API_TOKEN), {
       method: 'POST',
       body:   JSON.stringify(payload)
     });

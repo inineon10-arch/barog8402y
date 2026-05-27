@@ -49,7 +49,7 @@
   <div class="header">
     <div class="name" id="hdr-name">바로그영어</div>
     <div class="title">오답 단어장</div>
-    <div class="sub">날짜를 선택하면 그날의 오답 단어를 플래시카드로 복습해요</div>
+    <div class="sub">폴더를 선택하면 해당 오답 단어를 플래시카드로 복습해요</div>
   </div>
   <div class="stat-bar" id="stat-bar" style="display:none;">
     <div class="stat-chip"><span>총</span><strong id="stat-days">0</strong><span>일</span></div>
@@ -127,8 +127,8 @@ async function loadFolders(){
     const text=await res.text();
     const rows=parseCSV(text);
 
-    // 날짜별로 카운트 집계
-    const dateMap=new Map(); // date -> count
+    // 날짜+세트별로 집계 (I열=세트, J열=제목)
+    const groupMap=new Map(); // key("date|set") -> {date, set, title, count}
     let startRow=0;
     if(rows.length && String(rows[0][0]||'').trim()==='날짜') startRow=1;
 
@@ -138,39 +138,60 @@ async function loadFolders(){
       const dateStr=normDate(r[0]);
       const word=String(r[2]||'').trim();
       if(!dateStr || !word) continue;
-      dateMap.set(dateStr,(dateMap.get(dateStr)||0)+1);
+      const set=String(r[8]||'').trim();   // I열: 세트 (없으면 '')
+      const title=String(r[9]||'').trim(); // J열: 제목 (없으면 '')
+      const key=`${dateStr}|${set}`;
+      const g=groupMap.get(key);
+      if(g){
+        g.count++;
+        if(!g.title && title) g.title=title; // 제목이 한 행에만 있어도 채택
+      } else {
+        groupMap.set(key,{date:dateStr,set:set,title:title,count:1});
+      }
     }
 
-    if(dateMap.size===0){
+    if(groupMap.size===0){
       showStatus('📭','아직 오답 데이터가 없어요.<br><span style="font-size:0.8rem;color:var(--muted)">시험 채점이 끝나면 자동으로 추가돼요</span>');
       return;
     }
 
-    // 최신순 정렬
-    const sorted=[...dateMap.entries()].sort((a,b)=>b[0].localeCompare(a[0]));
+    // 최신순 정렬 (날짜 내림차순, 같은 날이면 세트 오름차순)
+    const sorted=[...groupMap.values()].sort((a,b)=>{
+      if(a.date!==b.date) return b.date.localeCompare(a.date);
+      return a.set.localeCompare(b.set);
+    });
 
-    // 상단 통계
+    // 상단 통계 (폴더 수 / 총 단어 수)
     document.getElementById('stat-days').textContent=sorted.length;
-    document.getElementById('stat-words').textContent=sorted.reduce((s,[,c])=>s+c,0);
+    document.getElementById('stat-words').textContent=sorted.reduce((s,g)=>s+g.count,0);
     document.getElementById('stat-bar').style.display='flex';
 
     // 카드 렌더링
     const grid=document.getElementById('grid');
     grid.innerHTML='';
-    sorted.forEach((entry,i)=>{
-      const [date,count]=entry;
+    sorted.forEach((g,i)=>{
       const a=document.createElement('a');
       a.className='folder';
-      a.href=`wrong-flashcard.html?date=${date}`;
+      // 세트가 있으면 URL에 set 파라미터 추가
+      a.href=g.set
+        ? `wrong-flashcard.html?date=${g.date}&set=${encodeURIComponent(g.set)}`
+        : `wrong-flashcard.html?date=${g.date}`;
+      // 제목 있으면 제목, 없으면 날짜
+      const mainLabel=g.title || fmtDate(g.date);
+      // 보조 라벨: 제목이 있으면 날짜+요일, 없으면 요일만 / 세트가 있으면 세트도 표시
+      const subParts=[];
+      if(g.title) subParts.push(fmtDate(g.date));
+      subParts.push(getDow(g.date));
+      if(g.set) subParts.push(`· ${g.set}`);
       a.innerHTML=`
         <div class="folder-top"></div>
         <div class="folder-no">No. ${String(i+1).padStart(2,'0')}</div>
         <div>
-          <div class="folder-date">${fmtDate(date)}</div>
-          <div class="folder-day">${getDow(date)}</div>
+          <div class="folder-date">${mainLabel}</div>
+          <div class="folder-day">${subParts.join(' ')}</div>
         </div>
         <div class="folder-foot">
-          <span class="folder-count">오답 ${count}개</span>
+          <span class="folder-count">오답 ${g.count}개</span>
           <span class="folder-arrow">→</span>
         </div>`;
       grid.appendChild(a);

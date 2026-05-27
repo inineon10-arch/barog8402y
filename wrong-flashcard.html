@@ -143,11 +143,14 @@ const SHEET_GID    = '341202867';         // scan-ocr 시트에서 이 학생 �
 const SHEET_CSV_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQyO-Sx_N0LFENgIcQp-3ATAHrYOUvLCuEr2Nls8qYKYMnOTRyo5_zJY1hbyA1ONfzcf2UK7kwe3fTP/pub?output=csv';
 /* ============================================================ */
 
-// URL 파라미터에서 날짜 가져오기 (?date=2026-05-17 또는 ?start=2026-05-13&end=2026-05-16)
+// URL 파라미터에서 날짜 가져오기 (?date=2026-05-17 또는 ?start=...&end=... / 선택: &set=A)
 const _params = new URLSearchParams(location.search);
 const _date  = _params.get('date')  || '';
 const _start = _params.get('start') || _date;
 const _end   = _params.get('end')   || _date;
+const _set   = _params.get('set')   || '';  // 세트 필터 (없으면 그날 전체)
+
+let _groupTitle = '';  // 시트 J열에서 읽은 제목 (있으면 헤더에 표시)
 
 const cards = [];
 
@@ -238,10 +241,13 @@ function hideStatus(){document.getElementById('status-msg').style.display='none'
 /* ============================================================
    헤더 업데이트
    ============================================================ */
-function updateHeader(name,start,end){
+function updateHeader(name,start,end,title){
   document.getElementById('hdr-name').textContent=`바로그영어 · ${name}`;
   let label='오답 단어장';
-  if(start){
+  if(title){
+    // 제목이 있으면 제목 우선 표시
+    label=title;
+  } else if(start){
     const sp=start.split('-');
     if(start===end || !end){
       label=`${parseInt(sp[1])}월 ${parseInt(sp[2])}일 오답`;
@@ -318,6 +324,10 @@ async function loadData(){
       if(!dateStr) continue;
       if(dateStr<_start || dateStr>_end) continue;
 
+      const set=String(r[8]||'').trim();   // I열: 세트
+      // set 파라미터가 있으면 같은 세트만, 없으면 전체 통과
+      if(_set && set!==_set) continue;
+
       const num=String(r[1]||'').trim();
       const word=String(r[2]||'').trim();
       const student=String(r[3]||'').trim();
@@ -325,8 +335,10 @@ async function loadData(){
       const pos=String(r[5]||'').trim();
       const tip=String(r[6]||'').trim();
       const example=highlightWord(sanitizeExample(String(r[7]||'').trim()), word);
+      const title=String(r[9]||'').trim(); // J열: 제목
 
       if(!word) continue;
+      if(!_groupTitle && title) _groupTitle=title; // 첫 제목 채택
       const isBlank = student==='빈칸' || student==='' || student==='(무응답)';
       cards.push({
         num:num||'-',
@@ -345,6 +357,7 @@ async function loadData(){
       return;
     }
     originalCards=[...cards];
+    updateHeader(STUDENT_NAME,_start,_end,_groupTitle); // 제목 반영해 헤더 갱신
     hideStatus();
     buildDots();initInteraction();renderCard(0);
   } catch(err){
