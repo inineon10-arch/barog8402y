@@ -39,6 +39,13 @@
   .folder-count.zero{color:var(--green);background:#e8f7f0;border-color:#b8e4d0;}
   .folder-arrow{font-size:1rem;color:var(--muted);}
   .folder:hover .folder-arrow{color:var(--wrong-col);}
+  /* ★ 별표 단어 전용 폴더 — 노란 강조 */
+  .folder.starred{grid-column:1 / -1;}
+  .folder.starred .folder-top{background:linear-gradient(90deg,#f5b300 0%,#ffd966 100%);}
+  .folder.starred .folder-no{color:#b88500;}
+  .folder.starred:hover{border-color:#f5b300;box-shadow:0 4px 14px rgba(245,179,0,0.18);}
+  .folder.starred .folder-count{color:#b88500;background:#fff8d6;border-color:#ffe88a;}
+  .folder.starred:hover .folder-arrow{color:#f5b300;}
   .back-link{display:inline-flex;align-items:center;gap:4px;font-size:0.78rem;color:var(--text2);text-decoration:none;margin-bottom:12px;}
   .back-link:active{color:var(--accent);}
 </style>
@@ -169,6 +176,10 @@ async function loadFolders(){
     // 카드 렌더링
     const grid=document.getElementById('grid');
     grid.innerHTML='';
+
+    /* ★ 별표 단어 폴더 — 학생이 마크한 단어들 (있을 때만 상단에 표시) */
+    renderStarredFolder(grid);
+
     sorted.forEach((g,i)=>{
       const a=document.createElement('a');
       a.className='folder';
@@ -203,6 +214,48 @@ async function loadFolders(){
     showStatus('⚠️',`데이터를 불러오지 못했어요.<br><span style="font-size:0.78rem;color:var(--muted)">${err.message}</span>`);
   }
 }
+
+/* ★ 별표 단어 폴더 렌더링 — loadFolders 와 bfcache 복원 양쪽에서 호출
+   localStorage 만 읽으므로 시트 fetch 없이 즉시 갱신됨 */
+function renderStarredFolder(grid) {
+  // 기존 별표 폴더가 있으면 제거 (재호출 시 중복 방지)
+  const existing = grid.querySelector('.folder.starred');
+  if (existing) existing.remove();
+
+  try {
+    const starredMap = JSON.parse(localStorage.getItem('starred_words_' + STUDENT_NAME) || '{}');
+    const starredCount = Object.keys(starredMap).length;
+    if (starredCount > 0) {
+      const sa = document.createElement('a');
+      sa.className = 'folder starred';
+      sa.href = 'wrong-flashcard.html?starred=1';
+      sa.innerHTML = `
+        <div class="folder-top"></div>
+        <div class="folder-no">⭐ My Stars</div>
+        <div>
+          <div class="folder-date">별표한 단어</div>
+          <div class="folder-day">내가 모른다고 표시한 단어 모음</div>
+        </div>
+        <div class="folder-foot">
+          <span class="folder-count">${starredCount}개</span>
+          <span class="folder-arrow">→</span>
+        </div>`;
+      // 항상 그리드 맨 앞에 삽입
+      grid.insertBefore(sa, grid.firstChild);
+    }
+  } catch (e) { console.warn('별표 폴더 로드 실패:', e); }
+}
+
+/* ★ 뒤로 가기로 돌아왔을 때 (bfcache 복원) 별표 폴더만 다시 그림
+   — 시트 재요청 없이 localStorage 만 읽으므로 빠름 */
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) {
+    const grid = document.getElementById('grid');
+    if (grid && grid.style.display !== 'none') {
+      renderStarredFolder(grid);
+    }
+  }
+});
 
 loadFolders();
 </script>
