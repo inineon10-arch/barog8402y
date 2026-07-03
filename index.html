@@ -2,9 +2,12 @@
 <!--
 ═══════════════════════════════════════════════════════════════════
   BAROG English · 학습 자료실
-  현재 버전: v2.3  (2026-06-10)
+  현재 버전: v2.3.6  (2026-06-27)
 ─────────────────────────────────────────────────────────────────
   변경 이력:
+  v2.3.6 — Daily Test 배너 색상 일관성 (숙어장=앰버, 추가단어=블루로 분리)
+  v2.3.5 — 숙어장 Daily Test 연동 (quiz_config "ID xx" 자동 인식) + 폴더 순서 단어장→숙어장→모의고사
+  v2.3.4 — 숙어장 폴더 활성화 (별도 시트, ID 컬럼 기반)
   v2.3 — Daily Test 로딩 중 상태 표시
   v2.2 — 모바일 탭 라벨 축약 (오답/Test/암기) + 시험 개수 뱃지
   v2.1 — 첫 화면을 Daily Test 로 변경
@@ -38,8 +41,10 @@
     --purple:#7036e3;
     --green-mock:#1a7a5e;
     --green-mock-soft:#2aab84;
-    --amber-weak:#d97706;
+    --amber-weak:#d97706;       /* 숙어장 (단어 암기 폴더 + Daily Test 배너 + 퀴즈 오버레이) */
     --amber-weak-soft:#f59e0b;
+    --blue-weak:#2563eb;        /* 추가 단어 (Daily Test 배너 + 추가단어 퀴즈) */
+    --blue-weak-soft:#3b82f6;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;}
@@ -364,15 +369,25 @@
   .quiz-banner.mock-banner.overdue .quiz-banner-label{color:#d94040;}
   .quiz-banner.mock-banner.overdue .quiz-banner-btn{background:#d94040;}
 
-  /* ── 추가 단어(취약 단어) 배너 — 앰버 ── */
-  .quiz-banner.weak-banner{border-color:rgba(217,119,6,.25);background:var(--card);box-shadow:0 2px 12px rgba(217,119,6,.08);}
-  .quiz-banner.weak-banner::before{background:var(--amber-weak);}
-  .quiz-banner.weak-banner .quiz-banner-label{color:var(--amber-weak);}
-  .quiz-banner.weak-banner .quiz-banner-btn{background:var(--amber-weak);}
+  /* ── 추가 단어(취약 단어) 배너 — 블루 ── */
+  .quiz-banner.weak-banner{border-color:rgba(37,99,235,.25);background:var(--card);box-shadow:0 2px 12px rgba(37,99,235,.08);}
+  .quiz-banner.weak-banner::before{background:var(--blue-weak);}
+  .quiz-banner.weak-banner .quiz-banner-label{color:var(--blue-weak);}
+  .quiz-banner.weak-banner .quiz-banner-btn{background:var(--blue-weak);}
   .quiz-banner.weak-banner.overdue{border-color:rgba(217,64,64,.35);background:#fff5f5;}
   .quiz-banner.weak-banner.overdue::before{background:#d94040;}
   .quiz-banner.weak-banner.overdue .quiz-banner-label{color:#d94040;}
   .quiz-banner.weak-banner.overdue .quiz-banner-btn{background:#d94040;}
+
+  /* ── 숙어장 배너 — 앰버 (Daily Test의 '오늘의 숙어') ── */
+  .quiz-banner.school-banner{border-color:rgba(217,119,6,.25);background:var(--card);box-shadow:0 2px 12px rgba(217,119,6,.08);}
+  .quiz-banner.school-banner::before{background:var(--amber-weak);}
+  .quiz-banner.school-banner .quiz-banner-label{color:var(--amber-weak);}
+  .quiz-banner.school-banner .quiz-banner-btn{background:var(--amber-weak);}
+  .quiz-banner.school-banner.overdue{border-color:rgba(217,64,64,.35);background:#fff5f5;}
+  .quiz-banner.school-banner.overdue::before{background:#d94040;}
+  .quiz-banner.school-banner.overdue .quiz-banner-label{color:#d94040;}
+  .quiz-banner.school-banner.overdue .quiz-banner-btn{background:#d94040;}
 
   .qz-card-line.mock{background:linear-gradient(90deg,var(--green-mock) 0%,var(--green-mock-soft) 100%);}
   .qz-pill.mock-pill{background:#e6f7f3;color:var(--green-mock);border:1px solid #b3dfd4;}
@@ -380,12 +395,25 @@
   .qz-submit-btn.mock-submit{background:var(--green-mock);box-shadow:0 4px 16px rgba(26,122,94,.25);}
   .qz-name.mock-name{color:var(--green-mock) !important;}
 
-  /* ── 추가 단어 퀴즈 오버레이 — 앰버 ── */
-  .qz-card-line.weak{background:linear-gradient(90deg,var(--amber-weak) 0%,var(--amber-weak-soft) 100%);}
-  .qz-pill.weak-pill{background:#fef3e6;color:var(--amber-weak);border:1px solid #fad9a8;}
-  .qz-start-btn.weak-start{background:var(--amber-weak);box-shadow:0 4px 16px rgba(217,119,6,.25);}
-  .qz-submit-btn.weak-submit{background:var(--amber-weak);box-shadow:0 4px 16px rgba(217,119,6,.25);}
-  .qz-name.weak-name{color:var(--amber-weak) !important;}
+  /* ── 추가 단어 퀴즈 오버레이 — 블루 ── */
+  .qz-card-line.weak{background:linear-gradient(90deg,var(--blue-weak) 0%,var(--blue-weak-soft) 100%);}
+  .qz-pill.weak-pill{background:#dbeafe;color:var(--blue-weak);border:1px solid #93c5fd;}
+  .qz-start-btn.weak-start{background:var(--blue-weak);box-shadow:0 4px 16px rgba(37,99,235,.25);}
+  .qz-submit-btn.weak-submit{background:var(--blue-weak);box-shadow:0 4px 16px rgba(37,99,235,.25);}
+  .qz-name.weak-name{color:var(--blue-weak) !important;}
+
+  /* ── 단어장 퀴즈 오버레이가 숙어장 모드로 동작할 때 — 보라를 앰버로 ──
+     retry(분홍)·result(초록)·재시도 시작 버튼은 의미가 있으니 원래 색 유지 */
+  .qz-overlay.school-mode .qz-name{color:var(--amber-weak);}
+  .qz-overlay.school-mode .qz-card-line{background:linear-gradient(90deg,var(--amber-weak) 0%,var(--amber-weak-soft) 100%);}
+  .qz-overlay.school-mode .qz-card-line.retry{background:linear-gradient(90deg,#be185d 0%,#f472b6 100%);}
+  .qz-overlay.school-mode .qz-card-line.result{background:linear-gradient(90deg,#1a9e6f 0%,#6ee7b7 100%);}
+  .qz-overlay.school-mode .qz-start-btn{background:var(--amber-weak);box-shadow:0 4px 16px rgba(217,119,6,.25);}
+  .qz-overlay.school-mode .qz-start-btn.retry{background:#be185d;box-shadow:0 4px 16px rgba(190,24,93,.25);}
+  .qz-overlay.school-mode .qz-submit-btn{background:var(--amber-weak);box-shadow:0 4px 16px rgba(217,119,6,.25);}
+  .qz-overlay.school-mode .qz-pill{background:#fef3e6;color:var(--amber-weak);border:1px solid #fad9a8;}
+  .qz-overlay.school-mode .qz-pill.retry{background:#fce7f3;color:#be185d;border-color:#fbcfe8;}
+  .qz-overlay.school-mode .qz-pill.done{background:#ecfdf5;color:#1a9e6f;border-color:#a7f3d0;}
 
   @media(max-width:768px){
     .mock-day-grid{grid-template-columns:repeat(2,1fr) !important;gap:.55rem;}
@@ -401,6 +429,63 @@
     .mock-folder{padding:.65rem .55rem;}
     .mock-cards{grid-template-columns:repeat(2,1fr);gap:.45rem;}
     .mcard{padding:.65rem .55rem;}
+  }
+
+  /* ── 숙어장 ID 폴더 카드 (앰버 컬러) ── */
+  .school-day-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;}
+
+  .school-folder{background:var(--card);border:1px solid var(--line);border-radius:2px;padding:.85rem .8rem;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:.35rem;transition:transform .3s,box-shadow .3s,border-color .3s;position:relative;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;user-select:none;animation:fadeUp .5s ease both;}
+  .school-folder::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--amber-weak);transform:scaleX(0);transform-origin:left;transition:transform .4s;}
+  .school-folder:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);border-color:rgba(217,119,6,.35);}
+  .school-folder:hover::before{transform:scaleX(1);}
+  .school-folder-num{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.75rem;color:var(--amber-weak);letter-spacing:.05em;}
+  .school-folder-title{font-family:'Noto Serif KR',serif;font-size:.85rem;font-weight:600;line-height:1.4;color:var(--ink);}
+  .school-folder-desc{font-size:.72rem;color:var(--ink-soft);line-height:1.5;flex-grow:1;}
+  .school-folder-footer{display:flex;justify-content:space-between;align-items:center;margin-top:.25rem;padding-top:.6rem;border-top:1px dashed var(--line);}
+  .school-folder-tag{font-family:'Inter',sans-serif;font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-mute);}
+  .school-folder-arrow{font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--amber-weak);transition:transform .3s;}
+  .school-folder:hover .school-folder-arrow{transform:translateX(4px);}
+
+  .school-detail{display:none;margin-top:1.5rem;padding:1.5rem;background:rgba(217,119,6,.02);border:1px solid rgba(217,119,6,.15);border-radius:6px;animation:fadeUp .3s ease both;}
+  .school-detail.open{display:block;}
+  .school-detail-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid rgba(217,119,6,.15);}
+  .school-detail-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:500;color:var(--ink);}
+  .school-detail-actions{display:flex;gap:.6rem;align-items:center;}
+  .school-flip-btn{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:.4rem .9rem;border-radius:20px;border:1.5px solid rgba(217,119,6,.35);background:rgba(217,119,6,.04);color:var(--amber-weak);cursor:pointer;transition:all .2s;}
+  .school-flip-btn:hover{background:rgba(217,119,6,.12);border-color:var(--amber-weak);}
+  .school-close-btn{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:.4rem .9rem;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink-mute);cursor:pointer;transition:all .2s;}
+  .school-close-btn:hover{border-color:var(--ink-mute);color:var(--ink);}
+
+  .school-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.65rem;}
+  .scard{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:.85rem .8rem .85rem .8rem;padding-right:2.2rem;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(31,42,48,.04);user-select:none;-webkit-user-select:none;}
+  .scard::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--amber-weak);transform:scaleY(0);transform-origin:top;transition:transform .3s;}
+  .scard:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(217,119,6,.12);border-color:rgba(217,119,6,.3);}
+  .scard:hover::before{transform:scaleY(1);}
+  .scard.open{background:rgba(217,119,6,.03);border-color:rgba(217,119,6,.22);}
+  .scard.open::before{transform:scaleY(1);}
+  .scard-en{font-family:'Inter',sans-serif;font-size:.85rem;font-weight:600;color:var(--ink);letter-spacing:-.01em;}
+  .scard-ko{font-size:.74rem;color:var(--ink-soft);line-height:1.5;margin-top:.28rem;display:none;}
+  .scard-hint{font-size:.58rem;color:var(--ink-mute);margin-top:.22rem;}
+  .scard.open .scard-ko{display:block;}
+  .scard.open .scard-hint{display:none;}
+  .scard-tts{position:absolute;top:.5rem;right:.5rem;display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(217,119,6,.08);color:var(--amber-weak);cursor:pointer;font-size:.7rem;transition:all .15s;z-index:2;}
+  .scard-tts:hover{background:rgba(217,119,6,.18);transform:scale(1.08);}
+  .scard-tts:active{transform:scale(.92);}
+
+  @media(max-width:768px){
+    .school-day-grid{grid-template-columns:repeat(2,1fr) !important;gap:.55rem;}
+    .school-folder{padding:.75rem .65rem;}
+    .school-folder-title{font-size:.78rem;}
+    .school-folder-desc{font-size:.66rem;}
+    .school-cards{grid-template-columns:repeat(2,1fr);gap:.5rem;}
+    .school-detail{padding:1rem .75rem;}
+    .school-detail-header{flex-direction:column;align-items:flex-start;gap:.5rem;}
+  }
+  @media(max-width:420px){
+    .school-day-grid{gap:.45rem;}
+    .school-folder{padding:.65rem .55rem;}
+    .school-cards{grid-template-columns:repeat(2,1fr);gap:.45rem;}
+    .scard{padding:.65rem .55rem;}
   }
 
   /* ── 폴더 그룹 (확장 가능한 단어학습 영역) ── */
@@ -667,7 +752,24 @@
     </div>
   </div>
 
-  <!-- 폴더 그룹 2: 모의고사 -->
+  <!-- 폴더 그룹 2: 숙어장 -->
+  <div class="folder-group collapsed" data-folder="school" id="folder-group-school" style="--fg-color:#d97706;--fg-rgb:217,119,6;">
+    <div class="folder-group-header" onclick="toggleFolderGroup('school')">
+      <span class="folder-group-toggle">▼</span>
+      <span class="folder-group-icon">💬</span>
+      <span class="folder-group-name">숙어장</span>
+      <span class="folder-group-meta" id="school-meta-inline" style="display:none">
+        <strong id="school-total">0</strong>개 표현 · <strong id="school-sets">0</strong>개 ID
+      </span>
+    </div>
+    <div class="folder-group-body">
+      <div id="school-content">
+        <div class="loading-box"><div class="spinner" style="border-top-color:#d97706"></div><span>숙어장 불러오는 중...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 폴더 그룹 3: 모의고사 -->
   <div class="folder-group collapsed" data-folder="mock" id="folder-group-mock" style="--fg-color:#1a7a5e;--fg-rgb:26,122,94;">
     <div class="folder-group-header" onclick="toggleFolderGroup('mock')">
       <span class="folder-group-toggle">▼</span>
@@ -683,24 +785,6 @@
       </div>
     </div>
   </div>
-
-  <!-- ★ 향후 새 폴더 그룹 추가 예시 (주석을 풀면 자동으로 표시됨):
-  <div class="folder-group" data-folder="school" id="folder-group-school" style="--fg-color:#d97706;--fg-rgb:217,119,6;">
-    <div class="folder-group-header" onclick="toggleFolderGroup('school')">
-      <span class="folder-group-toggle">▼</span>
-      <span class="folder-group-icon">🏫</span>
-      <span class="folder-group-name">내신단어</span>
-      <span class="folder-group-meta" id="school-meta-inline" style="display:none">
-        <strong id="school-total">0</strong>개 단어 · <strong id="school-sets">0</strong>개 세트
-      </span>
-    </div>
-    <div class="folder-group-body">
-      <div id="school-content">
-        <div class="loading-box"><div class="spinner" style="border-top-color:#d97706"></div><span>내신단어 불러오는 중...</span></div>
-      </div>
-    </div>
-  </div>
-  -->
 </main>
 
 <!-- ★ 퀴즈 풀스크린 오버레이 — 탭과 무관하게 떠야 하므로 섹션 밖에 배치 -->
@@ -776,12 +860,14 @@
    ★ 앱 버전 — 변경할 때 이 값만 바꾸면 푸터·콘솔이 같이 갱신됨
    ════════════════════════════════════════════════════════════ */
 const APP_VERSION      = '2 · 3';
-const APP_VERSION_DATE = '3';
+const APP_VERSION_DATE = '6';
 
 const STUDENT_NAME = '박영은';
 const VOCAB_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?output=csv&gid=1174135286';
 const MOCK_CSV  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?output=csv&gid=33850228';
 const WEAK_CSV  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?output=csv&gid=1027447664';
+/* ★ 숙어장 시트 URL (별도 스프레드시트, "보기 가능" 공유 필수) */
+const SCHOOL_CSV = 'https://docs.google.com/spreadsheets/d/1oGar-eFGhSHCORf5HnqyGEoYuVEO6hb2QK73UvF9lRE/export?format=csv&gid=1671929824';
 
 document.title = ' BAROG · ' + STUDENT_NAME ;
 
@@ -805,7 +891,16 @@ const STUDY_FOLDERS = [
     csv   : VOCAB_CSV,
     color : '#7036e3',
     rgb   : '112,54,227',
-    quizSrc: 'vocab',          // 시험 배너에서 사용할 단어 풀 종류 (vocab=기본단어장, mock=모의고사)
+    quizSrc: 'vocab',          // 시험 배너에서 사용할 단어 풀 종류
+  },
+  {
+    id    : 'school',
+    name  : '숙어장',
+    icon  : '💬',
+    csv   : SCHOOL_CSV,
+    color : '#d97706',
+    rgb   : '217,119,6',
+    quizSrc: 'school',
   },
   {
     id    : 'mock',
@@ -816,17 +911,6 @@ const STUDY_FOLDERS = [
     rgb   : '26,122,94',
     quizSrc: 'mock',
   },
-  /* ── 향후 폴더 추가 예시 (주석을 풀고 SCHOOL_CSV도 위에 선언하면 됩니다) ──
-  {
-    id    : 'school',
-    name  : '내신단어',
-    icon  : '🏫',
-    csv   : SCHOOL_CSV,
-    color : '#d97706',
-    rgb   : '217,119,6',
-    quizSrc: 'school',
-  },
-  */
 ];
 
 /* ============================================================
@@ -848,6 +932,7 @@ function switchTab(t) {
   if(t==='daily' || t==='study') {
     if(!vocabLoaded)    loadVocab();
     if(!mockTabLoaded)  loadMockTab();
+    if(!schoolTabLoaded) loadSchoolTab();
     if(t==='daily') loadWeakQuizBanners();
   }
 }
@@ -1183,29 +1268,37 @@ let mockLoaded = false;
    - loadVocab() / loadMockWords() 가 끝날 때 resolve
    - 다른 함수에서 await 해서 race condition 방지
    ────────────────────────────────────────────── */
-let _resolveVocabReady, _resolveMockReady;
-const vocabDataReady = new Promise(r => { _resolveVocabReady = r; });
-const mockDataReady  = new Promise(r => { _resolveMockReady  = r; });
+let _resolveVocabReady, _resolveMockReady, _resolveSchoolReady;
+const vocabDataReady  = new Promise(r => { _resolveVocabReady  = r; });
+const mockDataReady   = new Promise(r => { _resolveMockReady   = r; });
+const schoolDataReady = new Promise(r => { _resolveSchoolReady = r; });
 
 /* ──────────────────────────────────────────────
-   ★ Day 출처 라우터 — vocab / weak / mock 중 어느 시트의 Day인지 판단
-   - 우선순위: 단어장(allWords) > 추가단어(weakWords) > 모의고사(mockWords)
+   ★ Day 출처 라우터 — vocab / weak / mock / school 중 어느 시트의 Day인지 판단
+   - 우선순위: 단어장(allWords) > 추가단어(weakWords) > 모의고사(mockWords) > 숙어장(schoolWords)
      · 같은 이름이 추가단어와 모의고사 양쪽에 있으면 추가단어 우선
        (예: 시트를 모의고사 → 추가단어로 옮길 때 weak 가 win)
-   - 세 시트에 모두 없으면 패턴 추정 (Day 숫자 → vocab, 그 외 → mock)
+   - 네 시트에 모두 없으면 패턴 추정:
+     · "Day 숫자" → vocab
+     · "ID 숫자"  → school
+     · 그 외      → mock
    ────────────────────────────────────────────── */
 function getDaySource(dayVal) {
   if (!dayVal) return null;
   const trimmed = dayVal.trim();
-  if (allWords   && allWords.some(w   => w.day === trimmed)) return 'vocab';
-  if (weakWords  && weakWords.some(w  => w.day === trimmed)) return 'weak';
-  if (mockWords  && mockWords.some(w  => w.day === trimmed)) return 'mock';
-  // fallback (데이터 미로딩 등): 기존 패턴 추정
-  return /^Day\s*\d+$/i.test(trimmed) ? 'vocab' : 'mock';
+  if (allWords    && allWords.some(w    => w.day === trimmed)) return 'vocab';
+  if (weakWords   && weakWords.some(w   => w.day === trimmed)) return 'weak';
+  if (mockWords   && mockWords.some(w   => w.day === trimmed)) return 'mock';
+  if (schoolWords && schoolWords.some(w => w.day === trimmed)) return 'school';
+  // fallback (데이터 미로딩 등): 패턴 추정
+  if (/^ID\s*\d+$/i.test(trimmed))  return 'school';
+  if (/^Day\s*\d+$/i.test(trimmed)) return 'vocab';
+  return 'mock';
 }
-function isVocabDay(dayVal){ return getDaySource(dayVal) === 'vocab'; }
-function isMockDay(dayVal) { return getDaySource(dayVal) === 'mock'; }
-function isWeakDay(dayVal) { return getDaySource(dayVal) === 'weak'; }
+function isVocabDay(dayVal) { return getDaySource(dayVal) === 'vocab'; }
+function isMockDay(dayVal)  { return getDaySource(dayVal) === 'mock'; }
+function isWeakDay(dayVal)  { return getDaySource(dayVal) === 'weak'; }
+function isSchoolDay(dayVal){ return getDaySource(dayVal) === 'school'; }
 
 async function loadMockWords() {
   if(mockLoaded) return;
@@ -1467,8 +1560,8 @@ async function loadQuizConfig() {
   const container = document.getElementById('quiz-banner-container');
   container.innerHTML = '';
 
-  // ★ 분류 정확도를 위해 모의고사·추가단어 데이터도 로딩 완료까지 대기
-  //   (isMockDay / isWeakDay 가 시트 데이터를 참조하기 때문)
+  // ★ 분류 정확도를 위해 모의고사·추가단어·숙어장 데이터도 로딩 완료까지 대기
+  //   (isMockDay / isWeakDay / isSchoolDay 가 시트 데이터를 참조하기 때문)
   if (MOCK_CSV) {
     if (!mockLoaded) loadMockWords();
     await mockDataReady;
@@ -1476,6 +1569,10 @@ async function loadQuizConfig() {
   if (WEAK_CSV) {
     if (!weakLoaded) loadWeakWords();
     await weakDataReady;
+  }
+  if (SCHOOL_CSV) {
+    if (!schoolTabLoaded) loadSchoolTab();
+    await schoolDataReady;
   }
 
   // 1. 스케줄 시트에서 7일치(오늘~6일 전) 학생 데이터 읽기
@@ -1541,7 +1638,9 @@ function renderQuizBanners() {
 
   quizList.forEach((q, idx) => {
     const banner = document.createElement('div');
-    banner.className = 'quiz-banner' + (q.overdue ? ' overdue' : '');
+    banner.className = 'quiz-banner'
+                     + (isSchoolDay(q.day) ? ' school-banner' : '')
+                     + (q.overdue ? ' overdue' : '');
     banner.dataset.idx = idx;
 
     /* ── 배너 왼쪽 영역 ── */
@@ -1558,7 +1657,9 @@ function renderQuizBanners() {
       tag.textContent = `${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})`;
       labelEl.appendChild(tag);
     } else {
-      const prefix = isMockDay(q.day) ? '모의고사 단어' : '오늘의 단어';
+      const prefix = isMockDay(q.day)   ? '모의고사 단어'
+                   : isSchoolDay(q.day) ? '오늘의 숙어'
+                   : '오늘의 단어';
       labelEl.textContent = `${prefix} · ${fmtMMDD(q.dateStr)} (${getDow(q.dateStr)})`;
     }
 
@@ -1593,8 +1694,10 @@ function startQuizByIdx(idx) {
   currentQuiz = quizList[idx];
   if(!currentQuiz) return;
   QUIZ_CONFIG = { day: currentQuiz.day, count: currentQuiz.count };
-  /* 모의고사 Day이면 mockWords를 활성 단어 풀로 설정, 아니면 기존 allWords */
-  activeWords = isMockDay(currentQuiz.day) ? mockWords : allWords;
+  /* 모의고사/숙어장 Day이면 해당 풀, 아니면 기존 allWords */
+  activeWords = isMockDay(currentQuiz.day)   ? mockWords
+              : isSchoolDay(currentQuiz.day) ? schoolWords
+              : allWords;
   startQuiz();
 }
 
@@ -1618,7 +1721,9 @@ function startQuiz() {
   const pool = activeWords.length ? activeWords : allWords;
   const dayWords = pool.filter(w => w.day === QUIZ_CONFIG.day);
   if(!dayWords.length){
-    const src = isMockDay(QUIZ_CONFIG.day) ? '모의고사 시트(MOCK_CSV)' : '단어장';
+    const src = isMockDay(QUIZ_CONFIG.day)   ? '모의고사 시트(MOCK_CSV)'
+              : isSchoolDay(QUIZ_CONFIG.day) ? '숙어장 시트(SCHOOL_CSV)'
+              : '단어장';
     alert(`"${QUIZ_CONFIG.day}" 단어가 없어요.\n${src}에 해당 Day명이 있는지 확인해 주세요.`);
     return;
   }
@@ -1630,7 +1735,13 @@ function startQuiz() {
   qzOriginalTotal = selected.length;
   qzStartTime = Date.now();
   document.getElementById('qz-title').textContent=`${QUIZ_CONFIG.day} · 객관식`;
-  document.getElementById('qz-overlay').style.display='flex';
+  /* ★ 숙어장 모드면 오버레이를 앰버로 토글 + 헤더 이름 변경 */
+  const _overlay = document.getElementById('qz-overlay');
+  const _isSchool = isSchoolDay(QUIZ_CONFIG.day);
+  _overlay.classList.toggle('school-mode', _isSchool);
+  const _nameEl = _overlay.querySelector('.qz-name');
+  if(_nameEl) _nameEl.textContent = _isSchool ? '바로그영어 · 숙어장' : '바로그영어 · 단어장';
+  _overlay.style.display='flex';
   // 뒤로가기 감지용 history 상태 추가
   history.pushState({ quiz: true }, '', location.href);
   qzUpdatePill();
@@ -2084,6 +2195,169 @@ function flipMockDay(i) {
   const anyOpen = Array.from(cards).some(c => c.classList.contains('open'));
   cards.forEach(c => c.classList.toggle('open', !anyOpen));
   const btn = document.querySelector(`#mock-detail-${i} .mock-flip-btn`);
+  if(btn) btn.textContent = anyOpen ? '전체 뒤집기' : '전체 닫기';
+}
+
+/* ============================================================
+   숙어장 — CSV 로딩 + ID별 폴더 렌더
+   ============================================================
+   숙어장은 단어장·모의고사와 별개의 시트에서 불러옵니다.
+   그룹키로 "Day" 대신 "ID" 컬럼(예: "ID 01", "ID 02")을 사용합니다.
+   현재는 단어 암기(뒤집기 카드)만 지원하며 퀴즈 배너는 미연동입니다.
+   퀴즈가 필요하면 추후 모의고사 패턴(loadMockQuizBanners)을 참고해 추가 */
+let schoolTabLoaded = false;
+let schoolWords     = [];
+
+async function loadSchoolTab() {
+  schoolTabLoaded = true;
+  if(!SCHOOL_CSV) {
+    document.getElementById('school-content').innerHTML =
+      `<div class="loading-box" style="color:var(--ink-mute);text-align:center">
+        <span style="font-size:1.8rem">📋</span>
+        <span>숙어장 시트가 아직 등록되지 않았어요.<br>
+        <span style="font-size:.78rem">상단의 SCHOOL_CSV에 구글 시트 URL을 입력해 주세요.</span></span>
+      </div>`;
+    updateStudyCount();
+    _resolveSchoolReady && _resolveSchoolReady();   // ★ URL 없어도 신호 (대기 해제)
+    return;
+  }
+  try {
+    const res = await fetch(SCHOOL_CSV);
+    if(!res.ok) throw new Error('시트를 불러올 수 없습니다 ('+res.status+')');
+    const text = await res.text();
+    const lines = text.trim().split('\n').map(l=>l.replace(/\r$/,'')).filter(l=>l);
+
+    /* 헤더 감지: 첫 줄 첫 컬럼이 "ID 숫자" 패턴이면 헤더 없음 (1행부터 데이터) */
+    const firstCols = csvSplit(lines[0]);
+    const isIdRow = /^ID\s*\d/i.test((firstCols[0]||'').trim());
+    const rows = isIdRow ? lines : lines.slice(1);
+
+    schoolWords = rows.map(l => {
+      const v = csvSplit(l);
+      const id      = (v[0]||'').trim();
+      const word    = (v[1]||'').trim();
+      /* 뜻 안에 쉼표가 있어도 깨지지 않도록 3번째 컬럼부터 합침 */
+      const meaning = v.slice(2).join(',').trim();
+      return { day: id, word, meaning, pos: '' };
+    }).filter(w => w.day && w.word && w.meaning);
+
+    if(!schoolWords.length) {
+      document.getElementById('school-content').innerHTML =
+        `<div class="loading-box" style="color:#d94040">⚠️ 숙어 데이터를 불러오지 못했어요.<br><span style="font-size:.8rem;color:var(--ink-mute)">SCHOOL_CSV URL과 시트 공유 설정을 확인해 주세요.</span></div>`;
+      updateStudyCount();
+      return;
+    }
+    renderSchoolVocab(schoolWords);
+  } catch(e) {
+    document.getElementById('school-content').innerHTML =
+      `<div class="loading-box" style="color:#d94040">⚠️ ${e.message}</div>`;
+    updateStudyCount();
+  } finally {
+    /* ★ 성공/실패 무관 신호 — Daily Test 의 schoolDataReady 대기 해제 */
+    _resolveSchoolReady && _resolveSchoolReady();
+  }
+}
+
+function renderSchoolVocab(words) {
+  const groups = {};
+  words.forEach(w => { const d = w.day || '기타'; if(!groups[d]) groups[d]=[]; groups[d].push(w); });
+  /* ID는 문자열이지만 "ID 01", "ID 02" 같이 숫자 정렬을 기대하므로 자연 정렬 */
+  const ids = Object.keys(groups).sort((a,b) => a.localeCompare(b, 'en', {numeric:true}));
+
+  document.getElementById('school-total').textContent = words.length;
+  document.getElementById('school-sets').textContent  = ids.length;
+  document.getElementById('school-meta-inline').style.display = 'inline';
+  updateStudyCount();
+
+  const box = document.getElementById('school-content');
+  box.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'school-day-grid';
+
+  ids.forEach((id, i) => {
+    const wordCount = groups[id].length;
+    const folder = document.createElement('div');
+    folder.className = 'school-folder';
+    folder.style.animationDelay = `${0.04*i}s`;
+    folder.innerHTML = `
+      <div class="school-folder-num">No. ${String(i+1).padStart(2,'0')}</div>
+      <div class="school-folder-title">${esc(id)}</div>
+      <div class="school-folder-desc">${wordCount}개 표현</div>
+      <div class="school-folder-footer">
+        <span class="school-folder-tag">숙어장</span>
+        <span class="school-folder-arrow">→</span>
+      </div>`;
+
+    const detail = document.createElement('div');
+    detail.className = 'school-detail';
+    detail.id = `school-detail-${i}`;
+    detail.innerHTML = `
+      <div class="school-detail-header">
+        <div class="school-detail-title">${esc(id)} <span style="font-size:.85rem;font-weight:400;color:var(--ink-mute)">${wordCount}개</span></div>
+        <div class="school-detail-actions">
+          <button class="school-flip-btn" onclick="flipSchoolDay(${i})">전체 뒤집기</button>
+          <button class="school-close-btn" onclick="closeSchoolDay(${i})">닫기 ✕</button>
+        </div>
+      </div>
+      <div class="school-cards" id="school-cards-${i}"></div>`;
+
+    const cardsWrap = detail.querySelector(`#school-cards-${i}`);
+    groups[id].forEach(w => {
+      const c = document.createElement('div');
+      c.className = 'scard';
+      c.innerHTML = `<div class="scard-tts" title="발음 듣기">🔊</div>
+        <div class="scard-en">${esc(w.word)}</div>
+        <div class="scard-ko">${esc(w.meaning)}</div>
+        <div class="scard-hint">탭해서 뜻 보기</div>`;
+      c.addEventListener('click', (e) => {
+        if(e.target.closest('.scard-tts')) return;
+        c.classList.toggle('open');
+        if(c.classList.contains('open')) ttsPlay(w.word, c.querySelector('.scard-tts'));
+      });
+      const ttsBtn = c.querySelector('.scard-tts');
+      ttsBtn.addEventListener('click', (e) => { e.stopPropagation(); ttsPlay(w.word, ttsBtn); });
+      cardsWrap.appendChild(c);
+    });
+
+    folder.addEventListener('click', () => toggleSchoolDay(i, folder, detail));
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'grid-column:1/-1;';
+    wrap.appendChild(detail);
+    grid.appendChild(folder);
+    folder._detailWrap = wrap;
+    folder._detail = detail;
+  });
+
+  box.appendChild(grid);
+}
+
+function toggleSchoolDay(i, folder, detail) {
+  const isOpen = detail.classList.contains('open');
+  document.querySelectorAll('.school-detail.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.school-folder').forEach(f => { f.style.borderColor=''; f.style.background=''; });
+  if(!isOpen) {
+    detail.classList.add('open');
+    folder.insertAdjacentElement('afterend', folder._detailWrap);
+    folder.style.borderColor = 'rgba(217,119,6,.4)';
+    folder.style.background  = 'rgba(217,119,6,.03)';
+    detail.scrollIntoView({behavior:'smooth', block:'nearest'});
+    /* 뒤로가기로 되돌릴 수 있도록 history에 등록 */
+    pushStudyNav(() => closeSchoolDay(i));
+  }
+}
+function closeSchoolDay(i) {
+  const detail = document.getElementById(`school-detail-${i}`);
+  if(detail) {
+    detail.classList.remove('open');
+    if(detail.parentElement && detail.parentElement.style.gridColumn) detail.parentElement.remove();
+  }
+  document.querySelectorAll('.school-folder').forEach(f => { f.style.borderColor=''; f.style.background=''; });
+}
+function flipSchoolDay(i) {
+  const cards = document.querySelectorAll(`#school-cards-${i} .scard`);
+  const anyOpen = Array.from(cards).some(c => c.classList.contains('open'));
+  cards.forEach(c => c.classList.toggle('open', !anyOpen));
+  const btn = document.querySelector(`#school-detail-${i} .school-flip-btn`);
   if(btn) btn.textContent = anyOpen ? '전체 뒤집기' : '전체 닫기';
 }
 
@@ -2574,7 +2848,7 @@ function updateStudyCount() {
   // 모의고사
   const mt = parseInt(document.getElementById('mock-total')?.textContent) || 0;
   if(mt > 0) { total += mt; any = true; }
-  // 향후 폴더 (예: 내신단어)
+  // 숙어장
   const st = parseInt(document.getElementById('school-total')?.textContent) || 0;
   if(st > 0) { total += st; any = true; }
   el.textContent = any ? `전체 ${total}개 단어` : '불러오는 중...';
@@ -2597,7 +2871,7 @@ function updateStudyDivider() {
    폴더 접기/펼치기 + 바로가기 칩
    ============================================================ */
 /* 폴더별 펼침 상태 (true=펼침, false=접힘). 기본값: 둘 다 접힘 */
-const folderOpenState = { vocab:false, mock:false, school:false };
+const folderOpenState = { vocab:false, school:false, mock:false };
 
 function toggleFolderGroup(folderId) {
   const el = document.getElementById('folder-group-' + folderId);
