@@ -2,9 +2,11 @@
 <!--
 ═══════════════════════════════════════════════════════════════════
   BAROG English · 학습 자료실
-  현재 버전: v3.5  (2026-07-13)
+  현재 버전: v3.6.1  (2026-07-21)
 ─────────────────────────────────────────────────────────────────
   변경 이력 (v3.x ~):
+  v3.6.1 — 단어장 시트에 예문/예문해석 컬럼이 있을 때 시험 보기에 예문이 섞여 나오던 버그 수정 (뜻 컬럼만 추출, 예문 컬럼은 영어 단어 감지로 제외).
+  v3.6 — Daily Test 배너 정렬 일관성: 유형별(단어장/숙어장/모의고사/추가단어)로 완결되게 묶고 각 유형 안에서 오늘→밀림 순. banner-wrapper flex + getBannerOrder() 로 SLOTS 순서 기반 정렬.
   v3.5 — SLOTS 통합 리팩토링 3단계: 퀴즈 오버레이(.qz-*) 색상을 슬롯 기반으로 통합. mock/weak 하드코딩 CSS 클래스(.qz-card-line.mock, .qz-pill.weak-pill 등 10개) 완전 제거. startQuiz/startMockQuiz 에서 오버레이에 --fg-color 인라인 주입. HTML의 mock-name/mock-pill 클래스 정리.
   v3.4 — SLOTS 통합 리팩토링 2단계: renderMockQuizBanners / renderWeakQuizBanners 를 슬롯 색상·라벨 인라인 주입 방식으로 통합. WEAK_STYLE 상수 도입.
   v3.3.1 — parseVocabCsv 필터 정규식 엄격화
@@ -122,12 +124,14 @@
   .quiz-banner.overdue .quiz-banner-label{color:#d94040;}
   .quiz-banner.overdue .quiz-banner-btn{background:#d94040;}
   .quiz-banner.overdue .quiz-banner-overdue-tag{display:inline-block;background:#d94040;color:#fff;font-family:'Inter',sans-serif;font-size:.55rem;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle;text-transform:uppercase;}
-  #quiz-banner-container{margin-bottom:.8rem;display:flex;flex-direction:column;gap:.8rem;}
-  #quiz-banner-container:empty{margin-bottom:0;}
-  #mock-banner-container{display:flex;flex-direction:column;gap:.8rem;}
-  #mock-banner-container:empty{margin-bottom:0;}
-  #weak-banner-container{display:flex;flex-direction:column;gap:.8rem;margin-top:.8rem;}
-  #weak-banner-container:empty{margin-top:0;}
+  /* ★ v3.6: 세 배너 컨테이너를 하나의 flex 흐름으로 통합.
+     wrapper 가 실제 flex 부모, 개별 컨테이너는 display:contents 로 투명해져서
+     자식 배너들이 wrapper 의 직접 자식처럼 한 줄로 배치됨.
+     각 배너의 order 값은 렌더 시 getBannerOrder() 로 인라인 지정 →
+     유형별로 완결되게 묶이고, 각 유형 안에서 오늘→밀림 순. */
+  #banner-wrapper{display:flex;flex-direction:column;gap:.8rem;}
+  #banner-wrapper:empty{margin:0;}
+  #quiz-banner-container,#mock-banner-container,#weak-banner-container{display:contents;}
 
   /* 배너 영역과 단어장 영역 사이 구분선 */
   .study-divider{
@@ -702,10 +706,14 @@
     <div class="section-count" id="count-daily">오늘의 시험</div>
   </div>
 
-  <!-- 통합 시험 배너 영역 (단어장 + 모의고사 + 추가 단어) -->
-  <div id="quiz-banner-container"></div>
-  <div id="mock-banner-container"></div>
-  <div id="weak-banner-container"></div>
+  <!-- 통합 시험 배너 영역 (단어장 + 모의고사 + 추가 단어)
+       ★ v3.6: 세 컨테이너를 flex wrapper 로 묶고 각 배너에 order 부여 →
+          오늘 시험(order:1) 전부 위, 밀린 시험(order:2) 전부 아래로 통합 정렬 -->
+  <div id="banner-wrapper">
+    <div id="quiz-banner-container"></div>
+    <div id="mock-banner-container"></div>
+    <div id="weak-banner-container"></div>
+  </div>
 
   <!-- ★ 데이터 로딩 중 안내 (페이지 진입 시 기본 표시 — JS 가 끝나면 숨김) -->
   <div id="daily-loading" class="daily-status">
@@ -830,8 +838,8 @@
    APP_VERSION_DATE : 같은 날 나온 패치 번호(선택). 안 쓰면 빈 문자열 ''
                        → 푸터에는 '3 · 1'만 표시, 채우면 '3 · 1 · 2'처럼 표시
    ════════════════════════════════════════════════════════════ */
-const APP_VERSION      = '3 · 5';
-const APP_VERSION_DATE = '0';
+const APP_VERSION      = '3 · 6';
+const APP_VERSION_DATE = '1';
 
 const STUDENT_NAME = '박영은';
 /* ════════════════════════════════════════════════════════════
@@ -854,26 +862,26 @@ const STUDENT_NAME = '박영은';
    ════════════════════════════════════════════════════════════ */
 const SLOTS = [
   {
-    id:'HKSGB', name:'고등기본',
+    id:'B01', name:'고등기본',
     csv:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?output=csv&gid=1174135286',
     color:'#7036e3', icon:'📘',
     unit:'단어', subUnit:'Day', dayLabel:'오늘의 단어', quizName:'고등기본'
   },
   {
-    id:'euhwikkeut', name:'어휘끝수능',
-    csv:'',  // gid만 넣으면 첫 슬롯의 base URL 재사용
+    id:'B02', name:'어원편',
+    csv:'1590011270',  // gid만 넣으면 첫 슬롯의 base URL 재사용
     color:'#7036e3', icon:'📘',
-    unit:'단어', subUnit:'Day', dayLabel:'오늘의 단어', quizName:'어휘끝수능'
+    unit:'단어', subUnit:'Day', dayLabel:'오늘의 단어', quizName:'어원편'
   },
   {
-    id:'idioms', name:'숙어장',
-    csv:'',
+    id:'B08', name:'중학숙어',
+    csv:'https://docs.google.com/spreadsheets/d/1oGar-eFGhSHCORf5HnqyGEoYuVEO6hb2QK73UvF9lRE/export?format=csv&gid=1671929824',
     color:'#d97706', icon:'💬',
-    unit:'표현', subUnit:'ID', dayLabel:'오늘의 숙어', quizName:'숙어장'
+    unit:'표현', subUnit:'ID', dayLabel:'오늘의 숙어', quizName:'중학숙어'
   },
   {
     id:'mock', name:'모의고사',
-    csv:'',
+    csv:'33850228',
     color:'#1a7a5e', icon:'📝',
     unit:'단어', subUnit:'세트', dayLabel:'모의고사 단어', quizName:'모의고사'
   },
@@ -1059,8 +1067,8 @@ function parseVocabCsv(text) {
     }));
   } else {
     /* 형식 B: 헤더 없음 — 컬럼 수로 판단
-       3컬럼: Day, 단어, 뜻   (첫 컬럼이 접두어+숫자 패턴)
-       2컬럼: 단어, 뜻       */
+       3~5컬럼: Day, 단어, 뜻, [예문], [예문해석]   (첫 컬럼이 접두어+숫자 패턴)
+       2컬럼:   단어, 뜻       */
     /* 첫 컬럼이 접두어+숫자 패턴(예: "Day 01", "고3 01", "심화 03")이면 3컬럼 형식으로 간주 */
     const isDayFmt = /^\S+\s*\d/.test((firstCols[0]||'').trim());
     return lines.map(l=>{
@@ -1068,12 +1076,37 @@ function parseVocabCsv(text) {
       if(isDayFmt){
         const day=(v[0]||'').trim();
         const word=(v[1]||'').trim();
-        /* 뜻은 3번째~끝 컬럼 합치기 (뜻 안에 쉼표 있어도 OK) */
-        const meaning=v.slice(2).join(',').trim();
+        /* ★ 뜻 컬럼 추출 (v3.6.1)
+           시트 구조: [Day, 단어, 뜻, 예문, 예문해석]
+           - 정상 케이스: 뜻 셀의 쉼표가 큰따옴표로 감싸져 있으면 csvSplit 이 v[2] 하나로 처리.
+             → v[2] 가 온전한 뜻, v[3]=예문, v[4]=예문해석. 예문류는 버림.
+           - 방어 케이스: 혹시 뜻 안의 쉼표가 큰따옴표 없이 raw 로 쪼개진 경우
+             (예: v[2]="겸손한", v[3]=" 적당한" ...) 를 대비해,
+             "예문처럼 보이는 컬럼"이 나오기 전까지만 뜻으로 합친다.
+             예문 판별: 영문 문장(<em> 태그 포함 or 영어 단어가 여러 개) 또는
+                        해당 표제어(word)를 포함하는 컬럼. */
+        let meaningParts = [];
+        for (let i = 2; i < v.length; i++) {
+          const cell = (v[i] || '').trim();
+          if (!cell) continue;
+          /* 예문/해석으로 보이면 중단 (뜻 수집 종료).
+             예문의 특징: 영어 단어(2글자+)가 2개 이상, 또는 <em> 태그, 또는 표제어 포함+영어.
+             뜻의 특징: 주로 한글. 영어가 있어도 [형]/[명] 품사 표기나 단일 단어 수준. */
+          const englishWords = (cell.match(/[A-Za-z]{2,}/g) || []);
+          const looksLikeExample =
+            /<em>|<\/em>/i.test(cell) ||                              // <em> 태그
+            englishWords.length >= 2 ||                                // 영어 단어 2개 이상 → 예문
+            (word && englishWords.length >= 1 &&                       // 표제어 포함 + 영어 존재
+             cell.toLowerCase().includes(word.toLowerCase()));
+          if (looksLikeExample) break;
+          meaningParts.push(cell);
+        }
+        const meaning = meaningParts.join(', ').trim();
         return {day,word,meaning,pos:''};
       } else {
         const word=(v[0]||'').trim();
-        const meaning=v.slice(1).join(',').trim();
+        /* 2컬럼 형식: 단어, 뜻 — 뜻은 두 번째 컬럼만 */
+        const meaning=(v[1]||'').trim();
         return {day:'',word,meaning,pos:''};
       }
     /* ★ 필터: 최소한의 안전장치.
@@ -1528,6 +1561,25 @@ function getSlotForDay(dayVal) {
   return null;
 }
 
+/* ★ v3.6: 배너 정렬 순서 계산 — 유형별로 완결되게 묶고, 각 유형 안에서 오늘→밀림.
+   반환값이 작을수록 위에 표시됨 (CSS flex order 로 사용).
+   구조: (슬롯인덱스 * 10) + (오늘 0 / 밀림 1)
+     - 블랙라벨 오늘=0,  밀림=1
+     - 어휘끝수능 오늘=10, 밀림=11
+     - 숙어장 오늘=20,  밀림=21
+     - 모의고사 오늘=30, 밀림=31
+     - 추가단어(weak)는 슬롯이 아니므로 맨 뒤(900번대)
+   → 최종 시각 순서가 항상 SLOTS 배열 순서를 따르고, 각 유형이 섞이지 않음. */
+function getBannerOrder(day, overdue) {
+  const slot = getSlotForDay(day);
+  if (slot) {
+    const idx = SLOTS.findIndex(s => s.id === slot.id);
+    return idx * 10 + (overdue ? 1 : 0);
+  }
+  // weak 등 슬롯이 아닌 항목 → 맨 뒤로
+  return 900 + (overdue ? 1 : 0);
+}
+
 function getDaySource(dayVal) {
   if (!dayVal) return null;
   const trimmed = dayVal.trim();
@@ -1669,6 +1721,7 @@ function renderWeakQuizBanners() {
     banner.className = 'quiz-banner' + (q.overdue ? ' overdue' : '');
     banner.style.setProperty('--fg-color', WEAK_STYLE.color);
     banner.style.setProperty('--fg-rgb', WEAK_STYLE.rgb);
+    banner.style.order = getBannerOrder(q.day, q.overdue);   // ★ v3.6 유형별 정렬 (weak=900번대)
 
     const left = document.createElement('div');
     left.className = 'quiz-banner-left';
@@ -1904,6 +1957,7 @@ function renderQuizBanners() {
     banner.className = 'quiz-banner' + (q.overdue ? ' overdue' : '');
     banner.style.setProperty('--fg-color', bColor);
     banner.style.setProperty('--fg-rgb', bRgb);
+    banner.style.order = getBannerOrder(q.day, q.overdue);   // ★ v3.6 유형별 정렬
     banner.dataset.idx = idx;
 
     /* ── 배너 왼쪽 영역 ── */
@@ -2445,6 +2499,7 @@ function renderMockQuizBanners() {
     banner.className = 'quiz-banner' + (q.overdue ? ' overdue' : '');
     banner.style.setProperty('--fg-color', bColor);
     banner.style.setProperty('--fg-rgb', bRgb);
+    banner.style.order = getBannerOrder(q.day, q.overdue);   // ★ v3.6 유형별 정렬
     const left = document.createElement('div');
     left.className = 'quiz-banner-left';
 
