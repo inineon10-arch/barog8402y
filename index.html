@@ -2,9 +2,11 @@
 <!--
 ═══════════════════════════════════════════════════════════════════
   BAROG English · 학습 자료실
-  현재 버전: v3.6.1  (2026-07-21)
+  현재 버전: v3.6.3  (2026-08-13)
 ─────────────────────────────────────────────────────────────────
   변경 이력 (v3.x ~):
+  v3.6.3 — 제출 중복 버그 수정. 앱스 스크립트 POST 응답(res.json) 읽기가 CORS/리다이렉트로 간헐 실패하면 이미 시트에 기록됐는데도 "제출 실패"가 떠서, 학생이 재클릭할수록 같은 결과가 여러 줄 중복 기록되던 문제. ① 시도별 고유 제출 ID(nonce) 부여 후 재시도에도 동일 ID 재사용 → 서버가 중복 무시(서버 doPost 에 nonce 중복검사 필요). ② POST 응답 읽기 실패 시 GET 조회(fetchServerSubmitted)로 실제 저장 여부를 검증해 헛된 실패 표시 제거. ③ 전송 중/완료 상태 가드(dataset.sending)로 연타 차단. submitResult·submitMockResult 공통 sendSubmission() 경유.
+  v3.6.2 — 밀린 단어 표시를 기존 1주일에서 2주일로 연장
   v3.6.1 — 단어장 시트에 예문/예문해석 컬럼이 있을 때 시험 보기에 예문이 섞여 나오던 버그 수정 (뜻 컬럼만 추출, 예문 컬럼은 영어 단어 감지로 제외).
   v3.6 — Daily Test 배너 정렬 일관성: 유형별(단어장/숙어장/모의고사/추가단어)로 완결되게 묶고 각 유형 안에서 오늘→밀림 순. banner-wrapper flex + getBannerOrder() 로 SLOTS 순서 기반 정렬.
   v3.5 — SLOTS 통합 리팩토링 3단계: 퀴즈 오버레이(.qz-*) 색상을 슬롯 기반으로 통합. mock/weak 하드코딩 CSS 클래스(.qz-card-line.mock, .qz-pill.weak-pill 등 10개) 완전 제거. startQuiz/startMockQuiz 에서 오버레이에 --fg-color 인라인 주입. HTML의 mock-name/mock-pill 클래스 정리.
@@ -839,7 +841,7 @@
                        → 푸터에는 '3 · 1'만 표시, 채우면 '3 · 1 · 2'처럼 표시
    ════════════════════════════════════════════════════════════ */
 const APP_VERSION      = '3 · 6';
-const APP_VERSION_DATE = '1';
+const APP_VERSION_DATE = '3';
 
 const STUDENT_NAME = '박영은';
 /* ════════════════════════════════════════════════════════════
@@ -1669,7 +1671,8 @@ async function loadWeakQuizBanners() {
   await weakDataReady;
   if (!weakWords.length) return;   // 시트에 단어가 없으면 종료
 
-  const targetDates = [todayStr(), daysAgo(1), daysAgo(2), daysAgo(3), daysAgo(4), daysAgo(5), daysAgo(6)];
+  // 오늘~13일 전, 2주치
+  const targetDates = Array.from({ length: 14 }, (_, i) => i === 0 ? todayStr() : daysAgo(i));
   let scheduleRows = [];
   try {
     const res = await fetch(SCHEDULE_CSV + '&t=' + Date.now());
@@ -1837,6 +1840,48 @@ async function fetchServerSubmitted() {
   } catch(e) { return []; }
 }
 
+/* ============================================================
+   제출 안정화 (v3.7) — 중복 제출 방지
+   원인: 앱스 스크립트 POST 는 시트에 먼저 기록한 뒤 리다이렉트로
+         응답을 돌려주는데, 그 응답 읽기(res.json)가 CORS 로 간헐적
+         실패 → 이미 저장됐는데도 "제출 실패" 표시 → 학생 재클릭 →
+         똑같은 결과가 여러 줄 중복 기록.
+   해결: ① 시도별 고유 ID(nonce) 부여 후 재시도에도 같은 ID 재사용
+             (서버가 같은 ID 를 무시 → 시트엔 딱 1줄)
+         ② POST 응답 읽기 실패 시, 잘 되는 GET 조회로 "이미 저장됐는지"
+             검증해서 헛된 실패 표시를 없앰.
+   ============================================================ */
+function genNonce() {
+  return 'sub_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+
+/* POST 응답을 못 읽었을 때, 서버에 이 Day 가 실제로 기록됐는지 GET 으로 확인 */
+async function verifySubmittedOnServer(day) {
+  for (let i = 0; i < 2; i++) {
+    const list = await fetchServerSubmitted();
+    if (Array.isArray(list) && list.includes(day)) return true;
+    await new Promise(r => setTimeout(r, 800)); // 시트 반영 지연 대비 잠깐 대기 후 재확인
+  }
+  return false;
+}
+
+/* 제출 전송 — 성공/실패를 정확히 판정. 반환: true=기록됨, false=진짜 실패 */
+async function sendSubmission(payload) {
+  try {
+    const res  = await fetch(SUBMIT_URL + '?token=' + encodeURIComponent(API_TOKEN), {
+      method: 'POST', body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.ok) return true;
+    // 서버가 명시적으로 오류를 돌려준 경우 — 그래도 실제 기록됐는지 한 번 더 검증
+    return await verifySubmittedOnServer(payload.day);
+  } catch (err) {
+    // ★ 핵심: POST 응답 읽기 실패(CORS/리다이렉트) — 서버엔 이미 기록됐을 가능성이 큼.
+    //   GET 검증으로 실제 저장 여부 확인 → 헛된 "제출 실패" 방지.
+    return await verifySubmittedOnServer(payload.day);
+  }
+}
+
 /* 퀴즈 목록 — 활성 배너용 (날짜+Day) */
 let quizList = []; // [{ dateStr, day, count, overdue }, ...]
 let currentQuiz = null; // 현재 풀고 있는 퀴즈 항목
@@ -1860,8 +1905,8 @@ async function loadQuizConfig() {
     await schoolDataReady;
   }
 
-  // 1. 스케줄 시트에서 7일치(오늘~6일 전) 학생 데이터 읽기
-  const targetDates = [todayStr(), daysAgo(1), daysAgo(2), daysAgo(3), daysAgo(4), daysAgo(5), daysAgo(6)]; // 최근순
+  // 1. 스케줄 시트에서 14일치(오늘~13일 전, 2주) 학생 데이터 읽기
+  const targetDates = Array.from({ length: 14 }, (_, i) => i === 0 ? todayStr() : daysAgo(i)); // 최근순
   let scheduleRows = [];
 
   try {
@@ -2030,6 +2075,7 @@ function qzBuildOpts(target, pool) {
 }
 
 let qzStartTime = null; // 퀴즈 시작 시각
+let qzNonce     = null; // ★ 이 시도의 고유 제출 ID (재시도 시에도 동일 유지 → 서버 중복 차단)
 
 function startQuiz() {
   const pool = activeWords.length ? activeWords : allWords;
@@ -2048,6 +2094,7 @@ function startQuiz() {
   qzStage='mc';
   qzOriginalTotal = selected.length;
   qzStartTime = Date.now();
+  qzNonce = genNonce(); // ★ 새 시도 → 새 제출 ID
   document.getElementById('qz-title').textContent=`${QUIZ_CONFIG.day} · 객관식`;
   /* ★ 슬롯 색상·이름 인라인 주입 (v3.5) — CSS var 로 자동 전파 */
   const _overlay = document.getElementById('qz-overlay');
@@ -2294,47 +2341,44 @@ function fmtElapsed(ms) {
 
 async function submitResult(correct, total) {
   const btn = document.getElementById('qz-submit-btn');
-  if(!btn || btn.classList.contains('submitted')) return;
+  // ★ 이미 완료됐거나 전송 중이면 무시 (연타·중복 방지)
+  if(!btn || btn.classList.contains('submitted') || btn.dataset.sending === '1') return;
 
+  btn.dataset.sending = '1';
   btn.disabled = true;
   btn.innerHTML = '⏳ 제출 중...';
 
   const elapsed = qzStartTime ? fmtElapsed(Date.now() - qzStartTime) : '-';
+  if(!qzNonce) qzNonce = genNonce(); // 안전장치
   const payload = {
     student: STUDENT_NAME,
     day:     QUIZ_CONFIG.day,
     correct: correct,
     total:   total,
-    elapsed: elapsed
+    elapsed: elapsed,
+    nonce:   qzNonce   // ★ 재시도해도 동일 → 서버가 중복 무시
   };
 
-  try {
-   const res = await fetch(SUBMIT_URL + '?token=' + encodeURIComponent(API_TOKEN), {
-      method: 'POST',
-      body:   JSON.stringify(payload)
-    });
-    const json = await res.json();
-    if(json.ok) {
-      btn.classList.add('submitted');
-      btn.innerHTML = '✅ 제출 완료!';
-      // ★ 제출 기록 저장 + 배너 새로고침
-      if(currentQuiz) {
-        markLocalSubmitted(currentQuiz.dateStr, currentQuiz.day);
-        // quizList에서 제거 후 다시 렌더
-        quizList = quizList.filter(q => !(q.dateStr === currentQuiz.dateStr && q.day === currentQuiz.day));
-        renderQuizBanners();
-      }
-    } else {
-      throw new Error(json.error || '오류');
+  const ok = await sendSubmission(payload);
+  if(ok) {
+    btn.classList.add('submitted');
+    btn.innerHTML = '✅ 제출 완료!';
+    btn.dataset.sending = '';
+    // ★ 제출 기록 저장 + 배너 새로고침
+    if(currentQuiz) {
+      markLocalSubmitted(currentQuiz.dateStr, currentQuiz.day);
+      quizList = quizList.filter(q => !(q.dateStr === currentQuiz.dateStr && q.day === currentQuiz.day));
+      renderQuizBanners();
     }
-  } catch(err) {
+  } else {
+    // 진짜 실패한 경우에만 재시도 허용 (nonce 는 그대로 재사용 → 중복 안 생김)
     btn.classList.add('error');
     btn.innerHTML = '⚠️ 제출 실패 — 다시 시도';
     btn.disabled = false;
-    btn.classList.remove('error');
+    btn.dataset.sending = '';
     setTimeout(() => {
-      btn.classList.remove('submitted');
-      btn.innerHTML = '📤 선생님께 제출하기';
+      btn.classList.remove('error');
+      if(!btn.classList.contains('submitted')) btn.innerHTML = '📤 선생님께 제출하기';
     }, 2000);
   }
 }
@@ -2443,7 +2487,8 @@ async function loadMockQuizBanners() {
     await weakDataReady;
   }
 
-  const targetDates = [todayStr(), daysAgo(1), daysAgo(2), daysAgo(3), daysAgo(4), daysAgo(5), daysAgo(6)];
+  // 오늘~13일 전, 2주치
+  const targetDates = Array.from({ length: 14 }, (_, i) => i === 0 ? todayStr() : daysAgo(i));
   let scheduleRows = [];
   try {
     const res = await fetch(SCHEDULE_CSV + '&t=' + Date.now());
@@ -2543,6 +2588,7 @@ function renderMockQuizBanners() {
 /* ── 모의고사 퀴즈 엔진 ── */
 let mqStage='intro', mqQueue=[], mqPos=0, mqAnswered=false, mqWrong=[], mqCardEl=null, mqAnim=false;
 let mqOriginalTotal=0, mqStartTime=null;
+let mqNonce=null; // ★ 모의고사·추가단어 시도의 고유 제출 ID
 let _mqSwipeInit=false;
 
 /* ★ 퀴즈 모드 — 'mock' (모의고사) 또는 'weak' (추가 단어).
@@ -2595,6 +2641,7 @@ function startMockQuiz() {
   mqStage='mc';
   mqOriginalTotal = selected.length;
   mqStartTime = Date.now();
+  mqNonce = genNonce(); // ★ 새 시도 → 새 제출 ID
 
   /* ★ 헤더 표시 — 모드별 색상·라벨 (v3.5: CSS 클래스 토글 대신 인라인 var 주입) */
   const overlay = document.getElementById('mock-qz-overlay');
@@ -2829,38 +2876,40 @@ function mqRenderResult() {
 
 async function submitMockResult(correct, total) {
   const btn = document.getElementById('mock-qz-submit-btn');
-  if(!btn || btn.classList.contains('submitted')) return;
+  // ★ 이미 완료됐거나 전송 중이면 무시 (연타·중복 방지)
+  if(!btn || btn.classList.contains('submitted') || btn.dataset.sending === '1') return;
+  btn.dataset.sending = '1';
   btn.disabled = true;
   btn.innerHTML = '⏳ 제출 중...';
   const elapsed = mqStartTime ? fmtElapsed(Date.now() - mqStartTime) : '-';
   /* ★ 모드별 제출 type 분기 */
   const submitType = mqMode === 'weak' ? '추가단어' : '모의고사';
-  const payload = { student: STUDENT_NAME, day: mockQzConfig.day, correct, total, elapsed, type: submitType };
-  try {
-    const res = await fetch(SUBMIT_URL + '?token=' + encodeURIComponent(API_TOKEN), {
-      method:'POST', body: JSON.stringify(payload)
-    });
-    const json = await res.json();
-    if(json.ok) {
-      btn.classList.add('submitted');
-      btn.innerHTML = '✅ 제출 완료!';
-      if (mqMode === 'weak') {
-        /* ★ 추가 단어: 모의고사와 동일하게 스케줄 기반 처리 */
-        if (currentWeakQuiz) {
-          markLocalSubmitted(currentWeakQuiz.dateStr, currentWeakQuiz.day);
-          weakQuizList = weakQuizList.filter(q => !(q.dateStr===currentWeakQuiz.dateStr && q.day===currentWeakQuiz.day));
-          renderWeakQuizBanners();
-        }
-      } else if(currentMockQuiz) {
-        markLocalSubmitted(currentMockQuiz.dateStr, currentMockQuiz.day);
-        mockQuizList = mockQuizList.filter(q => !(q.dateStr===currentMockQuiz.dateStr && q.day===currentMockQuiz.day));
-        renderMockQuizBanners();
+  if(!mqNonce) mqNonce = genNonce(); // 안전장치
+  const payload = { student: STUDENT_NAME, day: mockQzConfig.day, correct, total, elapsed, type: submitType, nonce: mqNonce };
+
+  const ok = await sendSubmission(payload);
+  if(ok) {
+    btn.classList.add('submitted');
+    btn.innerHTML = '✅ 제출 완료!';
+    btn.dataset.sending = '';
+    if (mqMode === 'weak') {
+      /* ★ 추가 단어: 모의고사와 동일하게 스케줄 기반 처리 */
+      if (currentWeakQuiz) {
+        markLocalSubmitted(currentWeakQuiz.dateStr, currentWeakQuiz.day);
+        weakQuizList = weakQuizList.filter(q => !(q.dateStr===currentWeakQuiz.dateStr && q.day===currentWeakQuiz.day));
+        renderWeakQuizBanners();
       }
-    } else { throw new Error(json.error || '오류'); }
-  } catch(err) {
+    } else if(currentMockQuiz) {
+      markLocalSubmitted(currentMockQuiz.dateStr, currentMockQuiz.day);
+      mockQuizList = mockQuizList.filter(q => !(q.dateStr===currentMockQuiz.dateStr && q.day===currentMockQuiz.day));
+      renderMockQuizBanners();
+    }
+  } else {
+    btn.classList.add('error');
     btn.innerHTML = '⚠️ 제출 실패 — 다시 시도';
     btn.disabled  = false;
-    setTimeout(() => { btn.classList.remove('submitted'); btn.innerHTML='📤 선생님께 제출하기'; }, 2000);
+    btn.dataset.sending = '';
+    setTimeout(() => { btn.classList.remove('error'); if(!btn.classList.contains('submitted')) btn.innerHTML='📤 선생님께 제출하기'; }, 2000);
   }
 }
 
